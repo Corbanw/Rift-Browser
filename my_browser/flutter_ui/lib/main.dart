@@ -83,7 +83,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   // URL suggestions and auto-complete
   List<String> _urlSuggestions = [];
   bool _showSuggestions = false;
-  List<String> _browsingHistory = [];
+  final List<String> _browsingHistory = [];
   
   // Common domains for suggestions
   static const List<String> _commonDomains = [

@@ -24,9 +24,7 @@ class LogManager extends ChangeNotifier {
     _pendingLogs.add('[${DateTime.now().toIso8601String()}] $log');
     
     // Start batch timer if not already running
-    if (_batchTimer == null) {
-      _batchTimer = Timer(_batchInterval, _processBatch);
-    }
+    _batchTimer ??= Timer(_batchInterval, _processBatch);
   }
 
   void _processBatch() {
@@ -98,6 +96,7 @@ class LogManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void dispose() {
     _batchTimer?.cancel();
     _memoryTimer?.cancel();

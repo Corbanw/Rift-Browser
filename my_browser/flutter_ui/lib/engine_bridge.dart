@@ -293,7 +293,7 @@ class EngineBridge {
   static Future<List<LayoutBox>> _parseHtmlWithChunkedProcessing(String html) async {
     try {
       // Increased timeout for complex pages - 15 seconds for large pages, 10 seconds for smaller pages
-      final timeout = html.length > 100000 ? Duration(seconds: 15) : Duration(seconds: 10);
+      final timeout = html.length > 100000 ? const Duration(seconds: 15) : const Duration(seconds: 10);
       
       return await Future.any([
         _parseHtmlInternalWithChunking(html),
@@ -396,7 +396,7 @@ class EngineBridge {
         
         extracted += n;
         logPrint('EngineBridge: Batch extracted $extracted/$count boxes (total so far: ${layoutBoxes.length})');
-        await Future.delayed(Duration(milliseconds: 1));
+        await Future.delayed(const Duration(milliseconds: 1));
       }
       
       calloc.free(batchPtr);
@@ -697,12 +697,12 @@ class EngineBridge {
       try {
         final boxPtr = _getLayoutBox(boxArrayPtr, index);
         if (!completer.isCompleted) {
-          timeoutTimer?.cancel();
+          timeoutTimer.cancel();
           completer.complete(boxPtr);
         }
       } catch (e) {
         if (!completer.isCompleted) {
-          timeoutTimer?.cancel();
+          timeoutTimer.cancel();
           logPrint('EngineBridge: Error getting layout box $index: $e');
           completer.complete(nullptr);
         }
@@ -1465,11 +1465,6 @@ class EngineBridge {
       // Free the allocated memory
       calloc.free(htmlPtr);
       
-      if (boxArrayPtr == null) {
-        logPrint('EngineBridge: Isolate: Rust engine returned null, using fallback');
-        return _createLayoutFromHtml(html);
-      }
-      
       // Get box count
       final count = _getLayoutBoxCount(boxArrayPtr);
       logPrint('EngineBridge: Isolate: Rust engine returned $count layout boxes');
@@ -1529,7 +1524,7 @@ class EngineBridge {
       
     } catch (e) {
       logPrint('EngineBridge: Isolate: Failed to initialize FFI: $e');
-      throw e;
+      rethrow;
     }
   }
 
