@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Rendering Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .flex-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .flex-item {
+            background-color: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            flex: 1;
+            margin: 0 10px;
+            text-align: center;
+        }
+
+        .flex-item:nth-child(2) {
+            flex: 2;
+            background-color: #e74c3c;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .grid-item {
+            background-color: #9b59b6;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .text-demo {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .long-text {
+            word-wrap: break-word;
+            white-space: normal;
+            text-overflow: ellipsis;
+            max-width: 300px;
+            overflow: hidden;
+        }
+
+        .dark-mode-toggle {
+            background-color: #34495e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .dark-mode-toggle:hover {
+            background-color: #2c3e50;
+        }
+
+        /* Dark mode styles */
+        body.dark {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+        }
+
+        body.dark .header {
+            background-color: #1a252f;
+        }
+
+        body.dark .flex-container {
+            background-color: #34495e;
+        }
+
+        body.dark .text-demo {
+            background-color: #34495e;
+            color: #ecf0f1;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background-color: white !important;
+                color: black !important;
+            }
+            
+            .flex-container, .grid-container {
+                display: block !important;
+            }
+            
+            .flex-item, .grid-item {
+                margin-bottom: 10px !important;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Advanced Rendering Test</h1>
+            <p>Testing Flexbox, Grid, Text Rendering, and Dark Mode</p>
+        </div>
+
+        <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+            Toggle Dark Mode
+        </button>
+
+        <div class="flex-container">
+            <div class="flex-item">
+                <h3>Flex Item 1</h3>
+                <p>This is a flex item with flex: 1</p>
+            </div>
+            <div class="flex-item">
+                <h3>Flex Item 2</h3>
+                <p>This item has flex: 2 (twice the size)</p>
+            </div>
+            <div class="flex-item">
+                <h3>Flex Item 3</h3>
+                <p>Another flex item with flex: 1</p>
+            </div>
+        </div>
+
+        <div class="grid-container">
+            <div class="grid-item">
+                <h3>Grid Item 1</h3>
+                <p>CSS Grid layout</p>
+            </div>
+            <div class="grid-item">
+                <h3>Grid Item 2</h3>
+                <p>Three column grid</p>
+            </div>
+            <div class="grid-item">
+                <h3>Grid Item 3</h3>
+                <p>Responsive grid</p>
+            </div>
+        </div>
+
+        <div class="text-demo">
+            <h2>Text Rendering Features</h2>
+            <p>This paragraph demonstrates line-height, word wrapping, and text overflow handling. The text should be properly formatted with good readability.</p>
+            
+            <div class="long-text">
+                <h4>Long Text with Ellipsis</h4>
+                <p>This is a very long text that should be truncated with ellipsis when it exceeds the container width. It demonstrates text overflow handling in the browser engine.</p>
+            </div>
+        </div>
+
+        <div class="text-demo">
+            <h2>Print-Friendly Layout</h2>
+            <p>This content will look good when printed. The layout adapts for print media with proper page breaks and formatting.</p>
+        </div>
+    </div>
+
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark');
+        }
+    </script>
+</body>
+</html> 
