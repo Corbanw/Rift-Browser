@@ -7,7 +7,7 @@ class BrowserApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Rift Browser',
+      title: 'Velox Browser',
       theme: _createAppTheme(),
       home: const BrowserScreen(),
     );

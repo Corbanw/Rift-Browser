@@ -759,7 +759,7 @@ class EngineBridge {
     // Status box
     boxes.add(LayoutBox(
       x: 50, y: 260, width: 700, height: 60,
-      nodeType: 'p', textContent: 'The Rust engine successfully processed your request. This is a safe demo layout showing that Rift Browser core is functioning properly.',
+      nodeType: 'p', textContent: 'The Rust engine successfully processed your request. This is a safe demo layout showing that Velox Browser core is functioning properly.',
       backgroundColor: '#f3e5f5', color: '#7b1fa2', fontSize: 12,
       fontFamily: 'Arial', borderWidth: 1, borderColor: '#7b1fa2',
       padding: 10, margin: 10, fontWeight: 400, textAlign: 'left',

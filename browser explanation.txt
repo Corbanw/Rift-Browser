@@ -3,7 +3,7 @@ BROWSER RENDERING ENGINE EXPLANATION
 
 Complete Browser Rendering Pipeline: How HTML, CSS, and JavaScript are Collected, Parsed, and Painted onto the Screen
 
-Based on analysis of the Rift Browser codebase, this document explains the complete pipeline from raw HTML input to displayed content on screen.
+Based on analysis of the Velox Browser codebase, this document explains the complete pipeline from raw HTML input to displayed content on screen.
 
 ================================================================================
 1. HTML COLLECTION & PARSING

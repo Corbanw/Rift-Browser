@@ -11,12 +11,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:browser_ui/main.dart';
 
 void main() {
-  testWidgets('Rift Browser app smoke test', (WidgetTester tester) async {
+  testWidgets('Velox Browser app smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const BrowserApp());
 
     // Verify that our app shows the browser title.
-    expect(find.text('Rift Browser'), findsOneWidget);
+    expect(find.text('Velox Browser'), findsOneWidget);
     expect(find.text('Enter URL...'), findsOneWidget);
   });
 }

@@ -113,7 +113,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: const Text('Rift Browser'),
+      title: const Text('Velox Browser'),
       backgroundColor: _isDarkMode ? Colors.grey[800] : Colors.blue,
       foregroundColor: Colors.white,
       actions: [

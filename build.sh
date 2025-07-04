@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "========================================"
-echo "    Rift Browser Build Script"
+echo "    Velox Browser Build Script"
 echo "========================================"
 echo
 
@@ -79,7 +79,7 @@ echo "========================================"
 echo "    Build completed successfully!"
 echo "========================================"
 echo
-echo "To run Rift Browser:"
+echo "To run Velox Browser:"
 echo "  flutter run -d windows  # or your platform"
 echo
 echo "To build for release:"
