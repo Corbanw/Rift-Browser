@@ -7,8 +7,10 @@ use std::ptr;
 use tokio::runtime::Runtime;
 use reqwest::Client as AsyncClient;
 use futures::StreamExt;
+use std::sync::{Arc, Mutex};
+use lazy_static::lazy_static;
 
-use crate::dom::node::{DOMNode, LayoutBox, FFILayoutBox, NodeType, StyleMap, BoxValues};
+use crate::dom::node::{DOMNode, LayoutBox, FFILayoutBox, NodeType, StyleMap, BoxValues, DOMArena};
 use crate::parser::html::{HTMLParser, StreamingHTMLParser};
 use crate::parser::css::{parse_css, Stylesheet};
 use crate::layout::layout::LayoutEngine;
@@ -177,8 +179,8 @@ pub fn matches_selector(node: &DOMNode, selector: &str) -> bool {
 }
 
 // Apply CSS stylesheet to DOM
-pub fn apply_stylesheet_to_dom(dom: &mut DOMNode, stylesheet: &Stylesheet) {
-    fn recurse(node: &mut DOMNode, stylesheet: &Stylesheet) {
+pub fn apply_stylesheet_to_dom(dom: &mut DOMNode, stylesheet: &Stylesheet, arena: &mut DOMArena) {
+    fn recurse(node: &mut DOMNode, stylesheet: &Stylesheet, arena: &mut DOMArena) {
         if let NodeType::Element(_) = &node.node_type {
             let mut style_map = std::collections::HashMap::new();
             let tag = match &node.node_type {
@@ -197,16 +199,24 @@ pub fn apply_stylesheet_to_dom(dom: &mut DOMNode, stylesheet: &Stylesheet) {
                     }
                 }
             }
-            node.styles = style_map.clone();
+            // Convert HashMap to StyleMap
+            let mut style_map_obj = StyleMap::default();
+            for (k, v) in &style_map {
+                style_map_obj.set_property(k, v);
+            }
+            node.styles = style_map_obj;
             if !style_map.is_empty() {
                 println!("[STYLE] <{} class='{}' id='{}'> styles: {:?}", tag, class_attr, id_attr, style_map);
             }
         }
-        for child in &mut node.children {
-            recurse(child, stylesheet);
+        for child_id in &node.children {
+            if let Some(child_node) = arena.get_node(child_id) {
+                let mut child = child_node.lock().unwrap();
+                recurse(&mut child, stylesheet, arena);
+            }
         }
     }
-    recurse(dom, stylesheet);
+    recurse(dom, stylesheet, arena);
 }
 
 // Async HTML processing with streaming
@@ -231,4 +241,26 @@ pub async fn process_html_streaming(url: &str) -> Result<(Vec<crate::parser::htm
     
     println!("[STREAMING] Total tokens collected: {}", all_tokens.len());
     Ok((all_tokens, parser.get_extracted_css().to_vec()))
+} 
+
+pub use self::functions::{
+    dom_get_parent_node,
+    dom_get_child_nodes,
+    dom_get_first_child,
+    dom_get_last_child,
+    dom_get_next_sibling,
+    dom_get_previous_sibling,
+    dom_insert_before,
+    dom_replace_child,
+    dom_clone_node,
+    dom_remove_node,
+    dom_contains_node,
+}; 
+
+lazy_static! {
+    pub static ref GLOBAL_DOM_ARENA: Arc<Mutex<DOMArena>> = Arc::new(Mutex::new(DOMArena::new()));
+}
+
+pub fn get_global_arena() -> std::sync::MutexGuard<'static, DOMArena> {
+    GLOBAL_DOM_ARENA.lock().unwrap()
 } 

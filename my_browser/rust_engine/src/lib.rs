@@ -9,6 +9,7 @@ pub mod layout;
 pub mod paint;
 pub mod compositor;
 pub mod ffi;
+pub mod javascript;
 
 // Re-export commonly used types for convenience
 pub use dom::node::{DOMNode, LayoutBox, FFILayoutBox, NodeType, StyleMap, BoxValues};
@@ -17,30 +18,65 @@ pub use parser::css::{parse_css, Stylesheet};
 pub use layout::layout::LayoutEngine;
 pub use paint::painter::Painter;
 pub use compositor::compositor::Compositor;
+pub use javascript::{JavaScriptRuntime, ScriptManager};
 
 // Re-export FFI types and functions
 pub use ffi::{LayoutBoxArray, DrawCommand, DrawCommandArray, FFIPerformanceTracker};
 pub use ffi::functions::*;
 
-// Main entry point for the browser rendering engine
-pub struct BrowserEngine {
+// Main entry point for the Velox browser rendering engine
+pub struct VeloxEngine {
     pub layout_engine: LayoutEngine,
     pub painter: Painter,
     pub compositor: Compositor,
+    pub script_manager: Option<ScriptManager>,
 }
 
-impl BrowserEngine {
+impl VeloxEngine {
     pub fn new(width: f32, height: f32) -> Self {
         Self {
             layout_engine: LayoutEngine::new(width, height),
             painter: Painter::new(),
             compositor: Compositor::new(),
+            script_manager: None,
         }
     }
 
     pub fn with_stylesheet(mut self, stylesheet: Stylesheet) -> Self {
         self.layout_engine = self.layout_engine.with_stylesheet(stylesheet);
         self
+    }
+
+    /// Initialize JavaScript runtime with DOM tree
+    pub fn init_javascript(&mut self, dom: &DOMNode) -> Result<(), Box<dyn std::error::Error>> {
+        let mut script_manager = ScriptManager::new(ffi::GLOBAL_DOM_ARENA.clone(), dom.id.clone())?;
+        script_manager.initialize()?;
+        self.script_manager = Some(script_manager);
+        Ok(())
+    }
+
+    /// Execute JavaScript code
+    pub fn execute_script(&mut self, script_content: &str, script_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(script_manager) = &mut self.script_manager {
+            script_manager.execute_script(script_content, script_name)?;
+        }
+        Ok(())
+    }
+
+    /// Execute external JavaScript from URL
+    pub async fn execute_external_script(&mut self, script_url: &str) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(script_manager) = &mut self.script_manager {
+            script_manager.execute_external_script(script_url).await?;
+        }
+        Ok(())
+    }
+
+    /// Run JavaScript event loop
+    pub fn run_js_event_loop(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(script_manager) = &mut self.script_manager {
+            script_manager.run_event_loop()?;
+        }
+        Ok(())
     }
 
     pub fn render_html(&self, html: &str) -> Vec<LayoutBox> {
@@ -51,11 +87,52 @@ impl BrowserEngine {
 
         // Apply styles
         let mut styled_dom = dom.clone();
-        ffi::apply_stylesheet_to_dom(&mut styled_dom, &stylesheet);
-
+        {
+            let mut arena = ffi::GLOBAL_DOM_ARENA.lock().unwrap();
+            ffi::apply_stylesheet_to_dom(&mut styled_dom, &stylesheet, &mut *arena);
+        }
         // Layout
         let layout_engine = self.layout_engine.clone().with_stylesheet(stylesheet);
-        layout_engine.layout(&styled_dom)
+        layout_engine.layout(&styled_dom, &ffi::GLOBAL_DOM_ARENA.lock().unwrap())
+    }
+
+    /// Render HTML with JavaScript execution
+    pub async fn render_html_with_js(&mut self, html: &str) -> Result<Vec<LayoutBox>, Box<dyn std::error::Error>> {
+        // Parse HTML
+        let mut parser = HTMLParser::new(html.to_string());
+        let dom = parser.parse();
+        let stylesheet = parser.get_stylesheet();
+
+        // Initialize JavaScript runtime if not already done
+        if self.script_manager.is_none() {
+            self.init_javascript(&dom)?;
+        }
+
+        // Execute inline scripts
+        for (i, script_content) in parser.get_extracted_scripts().iter().enumerate() {
+            let script_name = format!("inline_script_{}", i);
+            self.execute_script(script_content, &script_name)?;
+        }
+
+        // Execute external scripts
+        for script_url in parser.get_script_src_urls() {
+            self.execute_external_script(script_url).await?;
+        }
+
+        // Apply styles
+        let mut styled_dom = dom.clone();
+        {
+            let mut arena = ffi::GLOBAL_DOM_ARENA.lock().unwrap();
+            ffi::apply_stylesheet_to_dom(&mut styled_dom, &stylesheet, &mut *arena);
+        }
+        // Layout
+        let layout_engine = self.layout_engine.clone().with_stylesheet(stylesheet);
+        let layout_boxes = layout_engine.layout(&styled_dom, &ffi::GLOBAL_DOM_ARENA.lock().unwrap());
+
+        // Run JavaScript event loop for any pending operations
+        self.run_js_event_loop()?;
+
+        Ok(layout_boxes)
     }
 
     pub fn render_url(&self, url: &str) -> Result<Vec<LayoutBox>, Box<dyn std::error::Error>> {
@@ -66,20 +143,20 @@ impl BrowserEngine {
 }
 
 // Default implementation for common use cases
-impl Default for BrowserEngine {
+impl Default for VeloxEngine {
     fn default() -> Self {
         Self::new(800.0, 600.0)
     }
 }
 
 // Export the main engine for external use
-pub fn create_browser_engine(width: f32, height: f32) -> BrowserEngine {
-    BrowserEngine::new(width, height)
+pub fn create_velox_engine(width: f32, height: f32) -> VeloxEngine {
+    VeloxEngine::new(width, height)
 }
 
 // Convenience function for quick HTML rendering
 pub fn render_html_quick(html: &str) -> Vec<LayoutBox> {
-    let engine = BrowserEngine::default();
+    let engine = VeloxEngine::default();
     engine.render_html(html)
 }
 
@@ -132,3 +209,17 @@ impl Default for PerformanceMonitor {
         Self::new()
     }
 } 
+
+pub use ffi::{
+    dom_get_parent_node,
+    dom_get_child_nodes,
+    dom_get_first_child,
+    dom_get_last_child,
+    dom_get_next_sibling,
+    dom_get_previous_sibling,
+    dom_insert_before,
+    dom_replace_child,
+    dom_clone_node,
+    dom_remove_node,
+    dom_contains_node,
+}; 

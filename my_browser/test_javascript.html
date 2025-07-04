@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .output {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JavaScript Integration Test</h1>
+        
+        <div class="output" id="console-output">
+            <strong>Console Output:</strong>
+            <div id="log-output"></div>
+        </div>
+        
+        <button class="button" onclick="testBasicJS()">Test Basic JavaScript</button>
+        <button class="button" onclick="testDOM()">Test DOM Manipulation</button>
+        <button class="button" onclick="testTimers()">Test Timers</button>
+        <button class="button" onclick="testAsync()">Test Async Operations</button>
+        
+        <div id="dynamic-content"></div>
+    </div>
+
+    <script>
+        // Override console.log to display in our output div
+        const originalLog = console.log;
+        const logOutput = document.getElementById('log-output');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const logEntry = document.createElement('div');
+            logEntry.textContent = args.join(' ');
+            logEntry.style.marginBottom = '5px';
+            logOutput.appendChild(logEntry);
+        };
+
+        // Test basic JavaScript functionality
+        function testBasicJS() {
+            console.log('=== Testing Basic JavaScript ===');
+            
+            // Variables and arithmetic
+            let x = 10;
+            let y = 20;
+            let result = x + y;
+            console.log(`Basic arithmetic: ${x} + ${y} = ${result}`);
+            
+            // Arrays
+            let arr = [1, 2, 3, 4, 5];
+            console.log('Array operations:', arr);
+            console.log('Array sum:', arr.reduce((a, b) => a + b, 0));
+            
+            // Objects
+            let obj = { name: 'Test Object', value: 42 };
+            console.log('Object:', obj);
+            console.log('Object property:', obj.name);
+            
+            // Functions
+            function greet(name) {
+                return `Hello, ${name}!`;
+            }
+            console.log('Function call:', greet('World'));
+            
+            console.log('Basic JavaScript test completed!');
+        }
+
+        // Test DOM manipulation
+        function testDOM() {
+            console.log('=== Testing DOM Manipulation ===');
+            
+            // Create new element
+            const newDiv = document.createElement('div');
+            newDiv.textContent = 'This is a dynamically created element';
+            newDiv.style.backgroundColor = '#e9ecef';
+            newDiv.style.padding = '10px';
+            newDiv.style.margin = '10px 0';
+            newDiv.style.borderRadius = '4px';
+            
+            // Add to page
+            document.getElementById('dynamic-content').appendChild(newDiv);
+            console.log('Created and added new div element');
+            
+            // Query elements
+            const buttons = document.querySelectorAll('.button');
+            console.log(`Found ${buttons.length} buttons on the page`);
+            
+            // Modify existing element
+            const container = document.querySelector('.container');
+            if (container) {
+                container.style.border = '2px solid #007bff';
+                console.log('Modified container border');
+            }
+            
+            console.log('DOM manipulation test completed!');
+        }
+
+        // Test timers
+        function testTimers() {
+            console.log('=== Testing Timers ===');
+            
+            // setTimeout
+            console.log('Setting timeout for 2 seconds...');
+            setTimeout(() => {
+                console.log('Timeout executed after 2 seconds!');
+                
+                // Create a notification element
+                const notification = document.createElement('div');
+                notification.textContent = '⏰ Timer completed!';
+                notification.style.backgroundColor = '#28a745';
+                notification.style.color = 'white';
+                notification.style.padding = '10px';
+                notification.style.margin = '10px 0';
+                notification.style.borderRadius = '4px';
+                notification.style.textAlign = 'center';
+                
+                document.getElementById('dynamic-content').appendChild(notification);
+            }, 2000);
+            
+            // setInterval
+            let counter = 0;
+            const intervalId = setInterval(() => {
+                counter++;
+                console.log(`Interval tick ${counter}`);
+                
+                if (counter >= 3) {
+                    clearInterval(intervalId);
+                    console.log('Interval cleared after 3 ticks');
+                }
+            }, 1000);
+            
+            console.log('Timer test initiated!');
+        }
+
+        // Test async operations
+        function testAsync() {
+            console.log('=== Testing Async Operations ===');
+            
+            // Simulate async operation with Promise
+            function asyncOperation() {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        resolve('Async operation completed!');
+                    }, 1500);
+                });
+            }
+            
+            // Use async/await
+            async function runAsyncTest() {
+                console.log('Starting async operation...');
+                try {
+                    const result = await asyncOperation();
+                    console.log('Async result:', result);
+                    
+                    // Create success element
+                    const successDiv = document.createElement('div');
+                    successDiv.textContent = '✅ ' + result;
+                    successDiv.style.backgroundColor = '#d4edda';
+                    successDiv.style.color = '#155724';
+                    successDiv.style.padding = '10px';
+                    successDiv.style.margin = '10px 0';
+                    successDiv.style.borderRadius = '4px';
+                    successDiv.style.border = '1px solid #c3e6cb';
+                    
+                    document.getElementById('dynamic-content').appendChild(successDiv);
+                } catch (error) {
+                    console.error('Async operation failed:', error);
+                }
+            }
+            
+            runAsyncTest();
+            console.log('Async test initiated!');
+        }
+
+        // Initialize page
+        console.log('JavaScript test page loaded successfully!');
+        console.log('V8 JavaScript engine is running!');
+        
+        // Test that we can access the DOM
+        console.log('Document title:', document.title);
+        console.log('Body element found:', !!document.body);
+        console.log('Ready to test JavaScript functionality!');
+    </script>
+</body>
+</html> 

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .dynamic-content {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 50px;
+        }
+        .counter {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .color-box {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #333;
+            margin: 10px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JavaScript Engine Test Page</h1>
+        
+        <h2>DOM Manipulation Test</h2>
+        <button class="button" onclick="addElement()">Add New Element</button>
+        <button class="button" onclick="removeElement()">Remove Last Element</button>
+        <button class="button" onclick="changeText()">Change Text</button>
+        
+        <div id="dynamic-content" class="dynamic-content">
+            <p>This content will be modified by JavaScript</p>
+        </div>
+        
+        <h2>Counter Test</h2>
+        <button class="button" onclick="incrementCounter()">Increment</button>
+        <button class="button" onclick="decrementCounter()">Decrement</button>
+        <div class="counter" id="counter">0</div>
+        
+        <h2>Style Manipulation Test</h2>
+        <button class="button" onclick="changeColors()">Change Colors</button>
+        <button class="button" onclick="toggleVisibility()">Toggle Visibility</button>
+        <div id="color-box" class="color-box"></div>
+        
+        <h2>Dynamic Content Test</h2>
+        <button class="button" onclick="loadDynamicContent()">Load Content</button>
+        <div id="dynamic-list"></div>
+        
+        <h2>Event Handling Test</h2>
+        <div id="event-area" style="padding: 20px; border: 2px dashed #ccc; margin: 20px 0;">
+            <p>Click, hover, or type in this area to test events</p>
+            <input type="text" id="test-input" placeholder="Type here..." style="width: 200px; padding: 5px;">
+        </div>
+        
+        <h2>Console Output</h2>
+        <div id="console-output" style="background: #000; color: #0f0; padding: 10px; font-family: monospace; height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        // Console logging function
+        function log(message) {
+            console.log(message);
+            const output = document.getElementById('console-output');
+            if (output) {
+                output.innerHTML += message + '<br>';
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+
+        // Initialize
+        log('JavaScript engine initialized');
+        log('DOM manipulation functions loaded');
+
+        // DOM Manipulation Functions
+        function addElement() {
+            const container = document.getElementById('dynamic-content');
+            const newElement = document.createElement('div');
+            newElement.innerHTML = '<p>New element added at ' + new Date().toLocaleTimeString() + '</p>';
+            newElement.style.backgroundColor = '#e8f4fd';
+            newElement.style.padding = '10px';
+            newElement.style.margin = '5px 0';
+            newElement.style.borderRadius = '4px';
+            container.appendChild(newElement);
+            log('Added new element');
+        }
+
+        function removeElement() {
+            const container = document.getElementById('dynamic-content');
+            if (container.children.length > 1) { // Keep the first paragraph
+                container.removeChild(container.lastChild);
+                log('Removed last element');
+            } else {
+                log('No elements to remove');
+            }
+        }
+
+        function changeText() {
+            const content = document.getElementById('dynamic-content');
+            const firstP = content.querySelector('p');
+            if (firstP) {
+                firstP.textContent = 'Text changed at ' + new Date().toLocaleTimeString();
+                log('Changed text content');
+            }
+        }
+
+        // Counter Functions
+        let counter = 0;
+        function incrementCounter() {
+            counter++;
+            document.getElementById('counter').textContent = counter;
+            log('Counter incremented to: ' + counter);
+        }
+
+        function decrementCounter() {
+            counter--;
+            document.getElementById('counter').textContent = counter;
+            log('Counter decremented to: ' + counter);
+        }
+
+        // Style Manipulation Functions
+        function changeColors() {
+            const box = document.getElementById('color-box');
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            box.style.backgroundColor = randomColor;
+            log('Changed color to: ' + randomColor);
+        }
+
+        function toggleVisibility() {
+            const box = document.getElementById('color-box');
+            if (box.style.display === 'none') {
+                box.style.display = 'inline-block';
+                log('Made color box visible');
+            } else {
+                box.style.display = 'none';
+                log('Hidden color box');
+            }
+        }
+
+        // Dynamic Content Functions
+        function loadDynamicContent() {
+            const list = document.getElementById('dynamic-list');
+            list.innerHTML = '';
+            
+            const items = ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry'];
+            items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.textContent = `${index + 1}. ${item}`;
+                div.style.padding = '5px';
+                div.style.margin = '2px 0';
+                div.style.backgroundColor = index % 2 === 0 ? '#f8f9fa' : '#e9ecef';
+                list.appendChild(div);
+            });
+            log('Loaded dynamic content with ' + items.length + ' items');
+        }
+
+        // Event Handling
+        document.getElementById('event-area').addEventListener('click', function(e) {
+            log('Clicked on event area at: ' + e.clientX + ', ' + e.clientY);
+        });
+
+        document.getElementById('event-area').addEventListener('mouseenter', function() {
+            log('Mouse entered event area');
+            this.style.backgroundColor = '#f8f9fa';
+        });
+
+        document.getElementById('event-area').addEventListener('mouseleave', function() {
+            log('Mouse left event area');
+            this.style.backgroundColor = '';
+        });
+
+        document.getElementById('test-input').addEventListener('input', function(e) {
+            log('Input changed: ' + e.target.value);
+        });
+
+        // Timer test
+        let timerCount = 0;
+        setInterval(function() {
+            timerCount++;
+            if (timerCount % 10 === 0) { // Log every 10 seconds
+                log('Timer tick: ' + timerCount + ' seconds');
+            }
+        }, 1000);
+
+        // Promise test
+        function testPromise() {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    log('Promise resolved after 2 seconds');
+                    resolve('Promise result');
+                }, 2000);
+            });
+        }
+
+        // Test promise after 3 seconds
+        setTimeout(() => {
+            testPromise().then(result => {
+                log('Promise completed with result: ' + result);
+            });
+        }, 3000);
+
+        // Fetch test (simulated)
+        function testFetch() {
+            log('Simulating fetch request...');
+            // In a real browser, this would make an HTTP request
+            setTimeout(() => {
+                log('Fetch completed (simulated)');
+            }, 1000);
+        }
+
+        // Test fetch after 5 seconds
+        setTimeout(testFetch, 5000);
+
+        log('All event listeners and timers set up');
+    </script>
+</body>
+</html> 

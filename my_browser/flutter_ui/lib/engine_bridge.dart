@@ -1,117 +1,35 @@
+// ignore_for_file: non_constant_identifier_names
+import 'dart:ffi' as ffi;
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:convert';
 import 'package:ffi/ffi.dart';
-import 'dart:ffi' as ffi;
 import 'dart:async';
-import 'dart:isolate';
-import 'dev_console.dart';
 import 'package:flutter/foundation.dart';
 
 import 'models/layout_box.dart';
-import 'utils/logger.dart';
+import 'ffi_structs.dart';
+import 'ffi_types.dart';
+import 'engine_result.dart';
+import 'extract_images.dart';
+import 'extract_links.dart';
+import 'extract_text.dart';
+import 'convert_utf8.dart';
+import 'call_parse_html.dart';
+import 'safe_free_layout_box.dart' hide FreeFFILayoutBoxDart;
+import 'extract_numeric_values.dart';
+import 'extract_string_values.dart';
+import 'calculate_averages.dart';
+import 'create_layout_box.dart';
+import 'safe_cstring_to_string.dart';
+import 'parse_html.dart';
+import 'parse_html_with_css.dart';
+import 'parse_html_to_draw_commands.dart';
+import 'parse_url_via_rust.dart';
+import 'parse_html_with_chunked_processing.dart';
+import 'extract_single_draw_command.dart';
 
-// FFI function signatures
-// C signatures
-typedef ParseHtmlC = Pointer<Void> Function(Pointer<Char>);
-typedef GetLayoutBoxCountC = Int32 Function(Pointer<Void>);
-typedef GetLayoutBoxC = Pointer<FFILayoutBox> Function(Pointer<Void>, Int32);
-typedef GetLayoutBoxXC = Float Function(Pointer<Void>);
-typedef GetLayoutBoxYC = Float Function(Pointer<Void>);
-typedef GetLayoutBoxWidthC = Float Function(Pointer<Void>);
-typedef GetLayoutBoxHeightC = Float Function(Pointer<Void>);
-typedef GetLayoutBoxNodeTypeC = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxTextContentC = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxBackgroundColorC = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxColorC = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxFontSizeC = Float Function(Pointer<Void>);
-typedef FreeLayoutBoxArrayC = Void Function(Pointer<Void>);
-typedef FreeLayoutBoxC = Void Function(Pointer<Void>);
-typedef FreeCStringC = Void Function(Pointer<Char>);
-// Dart signatures
-typedef ParseHtmlDart = Pointer<Void> Function(Pointer<Char>);
-typedef GetLayoutBoxCountDart = int Function(Pointer<Void>);
-typedef GetLayoutBoxDart = Pointer<FFILayoutBox> Function(Pointer<Void>, int);
-typedef GetLayoutBoxXDart = double Function(Pointer<Void>);
-typedef GetLayoutBoxYDart = double Function(Pointer<Void>);
-typedef GetLayoutBoxWidthDart = double Function(Pointer<Void>);
-typedef GetLayoutBoxHeightDart = double Function(Pointer<Void>);
-typedef GetLayoutBoxNodeTypeDart = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxTextContentDart = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxBackgroundColorDart = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxColorDart = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxFontSizeDart = double Function(Pointer<Void>);
-typedef FreeLayoutBoxArrayDart = void Function(Pointer<Void>);
-typedef FreeLayoutBoxDart = void Function(Pointer<Void>);
-typedef FreeCStringDart = void Function(Pointer<Char>);
-typedef GetLayoutBoxFontWeightC = Float Function(Pointer<Void>);
-typedef GetLayoutBoxTextAlignC = Pointer<Char> Function(Pointer<Void>);
-typedef GetLayoutBoxFontWeightDart = double Function(Pointer<Void>);
-typedef GetLayoutBoxTextAlignDart = Pointer<Char> Function(Pointer<Void>);
-typedef ParseHtmlWithCssC = Pointer<Void> Function(Pointer<Char>, Pointer<Char>);
-typedef ParseHtmlWithCssDart = Pointer<Void> Function(Pointer<Char>, Pointer<Char>);
-typedef ParseUrlViaRustC = Pointer<Void> Function(Pointer<Char>);
-typedef ParseUrlViaRustDart = Pointer<Void> Function(Pointer<Char>);
-typedef FreeFFILayoutBoxC = ffi.Void Function(ffi.Pointer<FFILayoutBox>);
-typedef FreeFFILayoutBoxDart = void Function(ffi.Pointer<FFILayoutBox>);
-typedef GetLayoutBoxBatchC = Int32 Function(Pointer<Void>, Int32, Int32, Pointer<Pointer<FFILayoutBox>>);
-typedef GetLayoutBoxBatchDart = int Function(Pointer<Void>, int, int, Pointer<Pointer<FFILayoutBox>>);
-
-// New enhanced function signatures
-typedef GetLayoutBoxBatchEnhancedC = Int32 Function(Pointer<Void>, Int32, Int32, Pointer<Pointer<FFILayoutBox>>);
-typedef GetLayoutBoxBatchEnhancedDart = int Function(Pointer<Void>, int, int, Pointer<Pointer<FFILayoutBox>>);
-typedef ParseHtmlToDrawCommandsC = Pointer<Void> Function(Pointer<Char>);
-typedef ParseHtmlToDrawCommandsDart = Pointer<Void> Function(Pointer<Char>);
-typedef ParseUrlViaRustEnhancedC = Pointer<Void> Function(Pointer<Char>);
-typedef ParseUrlViaRustEnhancedDart = Pointer<Void> Function(Pointer<Char>);
-
-// FFI struct for FFILayoutBox
-final class FFILayoutBox extends ffi.Struct {
-  @ffi.Double()
-  external double x;
-  @ffi.Double()
-  external double y;
-  @ffi.Double()
-  external double width;
-  @ffi.Double()
-  external double height;
-  @ffi.Double()
-  external double font_size;
-  @ffi.Double()
-  external double font_weight;
-  external ffi.Pointer<ffi.Char> node_type;
-  external ffi.Pointer<ffi.Char> text_content;
-  external ffi.Pointer<ffi.Char> background_color;
-  external ffi.Pointer<ffi.Char> color;
-  external ffi.Pointer<ffi.Char> font_family;
-  external ffi.Pointer<ffi.Char> border_color;
-  external ffi.Pointer<ffi.Char> text_align;
-  @ffi.Double()
-  external double margin_top;
-  @ffi.Double()
-  external double margin_right;
-  @ffi.Double()
-  external double margin_bottom;
-  @ffi.Double()
-  external double margin_left;
-  @ffi.Double()
-  external double padding_top;
-  @ffi.Double()
-  external double padding_right;
-  @ffi.Double()
-  external double padding_bottom;
-  @ffi.Double()
-  external double padding_left;
-  @ffi.Double()
-  external double border_width_top;
-  @ffi.Double()
-  external double border_width_right;
-  @ffi.Double()
-  external double border_width_bottom;
-  @ffi.Double()
-  external double border_width_left;
-}
+// All FFI typedefs have been moved to ffi_types.dart
 
 class EngineInitResult {
   final bool success;
@@ -122,7 +40,7 @@ class EngineInitResult {
 }
 
 class EngineBridge {
-  static DynamicLibrary? _lib;
+  static ffi.DynamicLibrary? _lib;
   static bool _initialized = false;
 
   // Function pointers
@@ -139,6 +57,54 @@ class EngineBridge {
   static late final GetLayoutBoxBatchEnhancedDart _getLayoutBoxBatchEnhanced;
   static late final ParseHtmlToDrawCommandsDart _parseHtmlToDrawCommands;
   static late final ParseUrlViaRustEnhancedDart _parseUrlViaRustEnhanced;
+  
+  // Draw command function pointers
+  static late final GetDrawCommandCountDart _getDrawCommandCount;
+  static late final GetDrawCommandDart _getDrawCommand;
+  static late final FreeDrawCommandArrayDart _freeDrawCommandArray;
+  
+  // JavaScript function pointers
+  static late final ExecuteJavaScriptDart _executeJavaScript;
+  static late final ParseHtmlWithJavaScriptDart _parseHtmlWithJavaScript;
+
+  // Attribute accessors
+  static late final DomGetAttributeDart _domGetAttribute;
+  static late final DomSetAttributeDart _domSetAttribute;
+  static late final DomRemoveAttributeDart _domRemoveAttribute;
+  static late final DomHasAttributeDart _domHasAttribute;
+  static late final FreeCStringDart _freeCStringPtr;
+
+  // classList accessors
+  static late final DomClassListAddDart _domClassListAdd;
+  static late final DomClassListRemoveDart _domClassListRemove;
+  static late final DomClassListToggleDart _domClassListToggle;
+  static late final DomClassListContainsDart _domClassListContains;
+
+  // Node/Element property accessors
+  // --- ADDED ---
+  static late final DomGetTextContentDart _domGetTextContent;
+  static late final DomSetTextContentDart _domSetTextContent;
+  static late final DomGetInnerHtmlDart _domGetInnerHtml;
+  static late final DomSetInnerHtmlDart _domSetInnerHtml;
+  static late final DomGetOuterHtmlDart _domGetOuterHtml;
+  static late final DomSetOuterHtmlDart _domSetOuterHtml;
+  static late final DomGetIdDart _domGetId;
+  static late final DomSetIdDart _domSetId;
+  static late final DomGetTagNameDart _domGetTagName;
+  static late final DomGetNodeTypeDart _domGetNodeType;
+
+  // Style API function pointers
+  // --- ADDED ---
+  static late final DomGetStyleDart _domGetStyle;
+  static late final DomSetStyleDart _domSetStyle;
+  static late final DomGetStyleCssTextDart _domGetStyleCssText;
+  static late final DomSetStyleCssTextDart _domSetStyleCssText;
+
+  // Event Handling API function pointers
+  // --- ADDED ---
+  static late final DomAddEventListenerDart _domAddEventListener;
+  static late final DomRemoveEventListenerDart _domRemoveEventListener;
+  static late final DomDispatchEventDart _domDispatchEvent;
 
   // Constants
   static const int _maxHtmlSize = 2000000;
@@ -178,13 +144,13 @@ class EngineBridge {
     try {
       if (Platform.isWindows) {
         logPrint('EngineBridge: Loading Windows library: rust_engine.dll');
-        _lib = DynamicLibrary.open('rust_engine.dll');
+        _lib = ffi.DynamicLibrary.open('rust_engine.dll');
       } else if (Platform.isMacOS) {
         logPrint('EngineBridge: Loading macOS library: librust_engine.dylib');
-        _lib = DynamicLibrary.open('librust_engine.dylib');
+        _lib = ffi.DynamicLibrary.open('librust_engine.dylib');
       } else {
         logPrint('EngineBridge: Loading Linux library: librust_engine.so');
-        _lib = DynamicLibrary.open('librust_engine.so');
+        _lib = ffi.DynamicLibrary.open('librust_engine.so');
       }
       
       if (_lib == null) {
@@ -217,8 +183,8 @@ class EngineBridge {
       logPrint('EngineBridge: _freeLayoutBoxArray function pointer initialized');
       
       _parseHtmlWithCss = _lib!.lookupFunction<
-        Pointer<Void> Function(Pointer<Char>, Pointer<Char>),
-        Pointer<Void> Function(Pointer<Char>, Pointer<Char>)
+        ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>),
+        ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)
       >('parse_html_with_css');
       logPrint('EngineBridge: _parseHtmlWithCss function pointer initialized');
       
@@ -240,6 +206,55 @@ class EngineBridge {
       _parseUrlViaRustEnhanced = _lib!.lookupFunction<ParseUrlViaRustEnhancedC, ParseUrlViaRustEnhancedDart>('parse_url_via_rust_enhanced');
       logPrint('EngineBridge: _parseUrlViaRustEnhanced function pointer initialized');
       
+      _getDrawCommandCount = _lib!.lookupFunction<GetDrawCommandCountC, GetDrawCommandCountDart>('get_draw_command_count');
+      logPrint('EngineBridge: _getDrawCommandCount function pointer initialized');
+      
+      _getDrawCommand = _lib!.lookupFunction<GetDrawCommandC, GetDrawCommandDart>('get_draw_command');
+      logPrint('EngineBridge: _getDrawCommand function pointer initialized');
+      
+      _freeDrawCommandArray = _lib!.lookupFunction<FreeDrawCommandArrayC, FreeDrawCommandArrayDart>('free_draw_command_array');
+      logPrint('EngineBridge: _freeDrawCommandArray function pointer initialized');
+      
+      // Initialize JavaScript function pointers
+      _executeJavaScript = _lib!.lookupFunction<ExecuteJavaScriptC, ExecuteJavaScriptDart>('execute_javascript');
+      logPrint('EngineBridge: _executeJavaScript function pointer initialized');
+      
+      _parseHtmlWithJavaScript = _lib!.lookupFunction<ParseHtmlWithJavaScriptC, ParseHtmlWithJavaScriptDart>('parse_html_with_javascript');
+      logPrint('EngineBridge: _parseHtmlWithJavaScript function pointer initialized');
+      
+      _domGetAttribute = _lib!.lookupFunction<DomGetAttributeC, DomGetAttributeDart>('dom_get_attribute');
+      _domSetAttribute = _lib!.lookupFunction<DomSetAttributeC, DomSetAttributeDart>('dom_set_attribute');
+      _domRemoveAttribute = _lib!.lookupFunction<DomRemoveAttributeC, DomRemoveAttributeDart>('dom_remove_attribute');
+      _domHasAttribute = _lib!.lookupFunction<DomHasAttributeC, DomHasAttributeDart>('dom_has_attribute');
+      
+      _freeCStringPtr = _lib!.lookupFunction<FreeCStringC, FreeCStringDart>('free_c_string');
+      
+      _domClassListAdd = _lib!.lookupFunction<DomClassListAddC, DomClassListAddDart>('dom_class_list_add');
+      _domClassListRemove = _lib!.lookupFunction<DomClassListRemoveC, DomClassListRemoveDart>('dom_class_list_remove');
+      _domClassListToggle = _lib!.lookupFunction<DomClassListToggleC, DomClassListToggleDart>('dom_class_list_toggle');
+      _domClassListContains = _lib!.lookupFunction<DomClassListContainsC, DomClassListContainsDart>('dom_class_list_contains');
+      
+      _domGetTextContent = _lib!.lookupFunction<DomGetTextContentC, DomGetTextContentDart>('dom_get_text_content');
+      _domSetTextContent = _lib!.lookupFunction<DomSetTextContentC, DomSetTextContentDart>('dom_set_text_content');
+      _domGetInnerHtml = _lib!.lookupFunction<DomGetInnerHtmlC, DomGetInnerHtmlDart>('dom_get_inner_html');
+      _domSetInnerHtml = _lib!.lookupFunction<DomSetInnerHtmlC, DomSetInnerHtmlDart>('dom_set_inner_html');
+      _domGetOuterHtml = _lib!.lookupFunction<DomGetOuterHtmlC, DomGetOuterHtmlDart>('dom_get_outer_html');
+      _domSetOuterHtml = _lib!.lookupFunction<DomSetOuterHtmlC, DomSetOuterHtmlDart>('dom_set_outer_html');
+      _domGetId = _lib!.lookupFunction<DomGetIdC, DomGetIdDart>('dom_get_id');
+      _domSetId = _lib!.lookupFunction<DomSetIdC, DomSetIdDart>('dom_set_id');
+      _domGetTagName = _lib!.lookupFunction<DomGetTagNameC, DomGetTagNameDart>('dom_get_tag_name');
+      _domGetNodeType = _lib!.lookupFunction<DomGetNodeTypeC, DomGetNodeTypeDart>('dom_get_node_type');
+      
+      _domGetStyle = _lib!.lookupFunction<DomGetStyleC, DomGetStyleDart>('dom_get_style');
+      _domSetStyle = _lib!.lookupFunction<DomSetStyleC, DomSetStyleDart>('dom_set_style');
+      _domGetStyleCssText = _lib!.lookupFunction<DomGetStyleCssTextC, DomGetStyleCssTextDart>('dom_get_style_css_text');
+      _domSetStyleCssText = _lib!.lookupFunction<DomSetStyleCssTextC, DomSetStyleCssTextDart>('dom_set_style_css_text');
+      
+      // Event Handling API
+      _domAddEventListener = _lib!.lookupFunction<DomAddEventListenerC, DomAddEventListenerDart>('dom_add_event_listener');
+      _domRemoveEventListener = _lib!.lookupFunction<DomRemoveEventListenerC, DomRemoveEventListenerDart>('dom_remove_event_listener');
+      _domDispatchEvent = _lib!.lookupFunction<DomDispatchEventC, DomDispatchEventDart>('dom_dispatch_event');
+      
       logPrint('EngineBridge: All function pointers initialized successfully');
     } catch (e) {
       logPrint('EngineBridge: Error looking up function pointers: $e');
@@ -260,7 +275,7 @@ class EngineBridge {
         initialize();
       } catch (e) {
         logPrint('EngineBridge: Failed to reinitialize: $e');
-        return _createLayoutFromHtml(html);
+        return createLayoutFromHtml(html);
       }
     }
 
@@ -274,11 +289,11 @@ class EngineBridge {
       }
       
       // Use chunked processing for better responsiveness
-      final layoutBoxes = await _parseHtmlWithChunkedProcessing(html);
+      final layoutBoxes = await parseHtmlWithChunkedProcessing(html);
       
       if (layoutBoxes.isEmpty) {
         logPrint('EngineBridge: No layout boxes extracted, using fallback');
-        return _createLayoutFromHtml(html);
+        return createLayoutFromHtml(html);
       }
       
       logPrint('EngineBridge: Successfully extracted ${layoutBoxes.length} layout boxes from Rust engine');
@@ -286,31 +301,13 @@ class EngineBridge {
       
     } catch (e) {
       logPrint('Error parsing HTML: $e');
-      return _createLayoutFromHtml(html);
-    }
-  }
-
-  static Future<List<LayoutBox>> _parseHtmlWithChunkedProcessing(String html) async {
-    try {
-      // Increased timeout for complex pages - 15 seconds for large pages, 10 seconds for smaller pages
-      final timeout = html.length > 100000 ? const Duration(seconds: 15) : const Duration(seconds: 10);
-      
-      return await Future.any([
-        _parseHtmlInternalWithChunking(html),
-        Future.delayed(timeout, () {
-          logPrint('EngineBridge: HTML parsing timed out after ${timeout.inSeconds} seconds, using fallback');
-          return _createLayoutFromHtml(html);
-        }),
-      ]);
-    } catch (e) {
-      logPrint('EngineBridge: Error in _parseHtmlWithChunkedProcessing: $e');
-      return _createLayoutFromHtml(html);
+      return createLayoutFromHtml(html);
     }
   }
 
   static Future<List<LayoutBox>> _parseHtmlInternalWithChunking(String html) async {
     // Convert HTML to native UTF8
-    final htmlPtr = _convertStringToNativeUtf8(html);
+    final htmlPtr = convertStringToNativeUtf8(html);
     if (htmlPtr == nullptr) {
       logPrint('EngineBridge: Failed to convert HTML to UTF8');
       return [];
@@ -319,7 +316,7 @@ class EngineBridge {
     try {
       // Call Rust engine to parse HTML
       logPrint('EngineBridge: Calling Rust parse_html function...');
-      final boxArrayPtr = _callParseHtml(htmlPtr);
+      final boxArrayPtr = callParseHtml(_parseHtml, htmlPtr);
       
       if (boxArrayPtr == nullptr) {
         logPrint('EngineBridge: Rust engine returned null, using fallback');
@@ -332,7 +329,7 @@ class EngineBridge {
       
       if (count <= 0) {
         logPrint('EngineBridge: Invalid box count ($count), using fallback');
-        _freeLayoutBoxArray(boxArrayPtr);
+        _freeLayoutBoxArrayHelper(boxArrayPtr);
         return [];
       }
       
@@ -340,7 +337,7 @@ class EngineBridge {
       final layoutBoxes = await _extractLayoutBoxesBatch(boxArrayPtr, count);
       
       // Clean up
-      _freeLayoutBoxArray(boxArrayPtr);
+      _freeLayoutBoxArrayHelper(boxArrayPtr);
       
       return layoutBoxes;
       
@@ -350,12 +347,12 @@ class EngineBridge {
     }
   }
 
-  static Future<List<LayoutBox>> _extractLayoutBoxesBatch(Pointer<Void> boxArrayPtr, int count) async {
+  static Future<List<LayoutBox>> _extractLayoutBoxesBatch(ffi.Pointer<ffi.Void> boxArrayPtr, int count) async {
     try {
       logPrint('EngineBridge: Starting batch extraction of $count boxes');
       final List<LayoutBox> layoutBoxes = [];
       const int batchSize = 1000;
-      final Pointer<Pointer<FFILayoutBox>> batchPtr = calloc.allocate<Pointer<FFILayoutBox>>(batchSize);
+      final ffi.Pointer<ffi.Pointer<FFILayoutBox>> batchPtr = calloc.allocate<ffi.Pointer<FFILayoutBox>>(batchSize);
       int extracted = 0;
       
       logPrint('EngineBridge: Allocated batch pointer: $batchPtr');
@@ -391,7 +388,7 @@ class EngineBridge {
             logPrint('EngineBridge: Error extracting box $i: $e');
           }
           
-          _safeFreeLayoutBox(boxPtr);
+          _freeFFILayoutBox(boxPtr);
         }
         
         extracted += n;
@@ -408,560 +405,6 @@ class EngineBridge {
     }
   }
 
-  static List<LayoutBox> _createLayoutFromHtml(String html) {
-    logPrint('EngineBridge: Creating layout from HTML content');
-    
-    List<LayoutBox> boxes = [];
-    int yOffset = 50;
-    
-    // Extract title if available
-    String title = 'Web Page';
-    if (html.contains('<title>')) {
-      final titleStart = html.indexOf('<title>') + 7;
-      final titleEnd = html.indexOf('</title>', titleStart);
-      if (titleEnd > titleStart) {
-        title = html.substring(titleStart, titleEnd).trim();
-      }
-    }
-    
-    // Header box
-    boxes.add(LayoutBox(
-      x: 50.0, y: yOffset.toDouble(), width: 700.0, height: 60.0,
-      nodeType: 'h1', textContent: title,
-      backgroundColor: '#e8f5e8', color: '#2e7d32', fontSize: 24.0,
-      fontFamily: 'Arial', borderWidth: 2.0, borderColor: '#2e7d32',
-      padding: 10.0, margin: 10.0, fontWeight: 700.0, textAlign: 'center',
-    ));
-    yOffset += 80;
-    
-    // Content info box
-    boxes.add(LayoutBox(
-      x: 50.0, y: yOffset.toDouble(), width: 700.0, height: 50.0,
-      nodeType: 'p', textContent: 'Page loaded successfully (${html.length} characters)',
-      backgroundColor: '#fff3e0', color: '#ef6c00', fontSize: 14.0,
-      fontFamily: 'Arial', borderWidth: 1.0, borderColor: '#ef6c00',
-      padding: 10.0, margin: 10.0, fontWeight: 400.0, textAlign: 'left',
-    ));
-    yOffset += 70;
-    
-    // Extract and display images
-    final images = _extractImages(html);
-    for (final image in images) {
-      boxes.add(LayoutBox(
-        x: 50.0, y: yOffset.toDouble(), width: 300.0, height: 200.0,
-        nodeType: 'img', textContent: image,
-        backgroundColor: '#f0f0f0', color: '#666666', fontSize: 12.0,
-        fontFamily: 'Arial', borderWidth: 1.0, borderColor: '#cccccc',
-        padding: 10.0, margin: 10.0, fontWeight: 400.0, textAlign: 'center',
-      ));
-      yOffset += 220;
-    }
-    
-    // Extract and display some text content
-    final textContent = _extractTextContent(html);
-    if (textContent.isNotEmpty) {
-      final lines = textContent.split('\n').take(5); // Limit to 5 lines
-      for (final line in lines) {
-        if (line.trim().isNotEmpty) {
-          boxes.add(LayoutBox(
-            x: 50.0, y: yOffset.toDouble(), width: 700.0, height: 40.0,
-            nodeType: 'p', textContent: line.trim(),
-            backgroundColor: '#f5f5f5', color: '#333333', fontSize: 14.0,
-            fontFamily: 'Arial', borderWidth: 0.0, borderColor: '',
-            padding: 8.0, margin: 5.0, fontWeight: 400.0, textAlign: 'left',
-          ));
-          yOffset += 50;
-        }
-      }
-    }
-    
-    // Extract and display links
-    final links = _extractLinks(html);
-    if (links.isNotEmpty) {
-      boxes.add(LayoutBox(
-        x: 50.0, y: yOffset.toDouble(), width: 700.0, height: 40.0,
-        nodeType: 'h3', textContent: 'Links found:',
-        backgroundColor: '#e3f2fd', color: '#1565c0', fontSize: 16.0,
-        fontFamily: 'Arial', borderWidth: 0.0, borderColor: '',
-        padding: 10.0, margin: 10.0, fontWeight: 600.0, textAlign: 'left',
-      ));
-      yOffset += 50;
-      
-      for (final link in links.take(3)) { // Show first 3 links
-        boxes.add(LayoutBox(
-          x: 50.0, y: yOffset.toDouble(), width: 700.0, height: 30.0,
-          nodeType: 'a', textContent: link,
-          backgroundColor: '#f8f9fa', color: '#0066cc', fontSize: 12.0,
-          fontFamily: 'Arial', borderWidth: 0.0, borderColor: '',
-          padding: 5.0, margin: 2.0, fontWeight: 400.0, textAlign: 'left',
-        ));
-        yOffset += 40;
-      }
-    }
-    
-    // Status box
-    boxes.add(LayoutBox(
-      x: 50.0, y: yOffset.toDouble(), width: 700.0, height: 60.0,
-      nodeType: 'p', textContent: 'Rift Browser successfully processed this page. Found ${images.length} images and ${links.length} links.',
-      backgroundColor: '#e3f2fd', color: '#1565c0', fontSize: 12.0,
-      fontFamily: 'Arial', borderWidth: 1.0, borderColor: '#1565c0',
-      padding: 10.0, margin: 10.0, fontWeight: 400.0, textAlign: 'left',
-    ));
-    
-    logPrint('EngineBridge: Created ${boxes.length} layout boxes from HTML');
-    return boxes;
-  }
-
-  static List<String> _extractImages(String html) {
-    try {
-      final images = <String>[];
-      final imgPattern1 = RegExp(r'<img[^>]+src="([^"]+)"[^>]*>', caseSensitive: false);
-      final imgPattern2 = RegExp(r"<img[^>]+src='([^']+)'[^>]*>", caseSensitive: false);
-      
-      final matches1 = imgPattern1.allMatches(html);
-      final matches2 = imgPattern2.allMatches(html);
-      
-      for (final match in matches1) {
-        final src = match.group(1);
-        if (src != null && src.isNotEmpty) {
-          images.add(src);
-        }
-      }
-      
-      for (final match in matches2) {
-        final src = match.group(1);
-        if (src != null && src.isNotEmpty) {
-          images.add(src);
-        }
-      }
-      
-      logPrint('EngineBridge: Extracted ${images.length} images from HTML');
-      return images;
-    } catch (e) {
-      logPrint('EngineBridge: Error extracting images: $e');
-      return [];
-    }
-  }
-
-  static List<String> _extractLinks(String html) {
-    try {
-      final links = <String>[];
-      final linkPattern1 = RegExp(r'<a[^>]+href="([^"]+)"[^>]*>', caseSensitive: false);
-      final linkPattern2 = RegExp(r"<a[^>]+href='([^']+)'[^>]*>", caseSensitive: false);
-      
-      final matches1 = linkPattern1.allMatches(html);
-      final matches2 = linkPattern2.allMatches(html);
-      
-      for (final match in matches1) {
-        final href = match.group(1);
-        if (href != null && href.isNotEmpty && !href.startsWith('#')) {
-          links.add(href);
-        }
-      }
-      
-      for (final match in matches2) {
-        final href = match.group(1);
-        if (href != null && href.isNotEmpty && !href.startsWith('#')) {
-          links.add(href);
-        }
-      }
-      
-      logPrint('EngineBridge: Extracted ${links.length} links from HTML');
-      return links;
-    } catch (e) {
-      logPrint('EngineBridge: Error extracting links: $e');
-      return [];
-    }
-  }
-
-  static String _extractTextContent(String html) {
-    try {
-      // Simple text extraction - remove HTML tags
-      String text = html;
-      
-      // Remove script and style tags and their content
-      text = text.replaceAll(RegExp(r'<script[^>]*>.*?</script>', dotAll: true), '');
-      text = text.replaceAll(RegExp(r'<style[^>]*>.*?</style>', dotAll: true), '');
-      
-      // Remove HTML tags
-      text = text.replaceAll(RegExp(r'<[^>]*>'), '');
-      
-      // Decode HTML entities
-      text = text.replaceAll('&amp;', '&');
-      text = text.replaceAll('&lt;', '<');
-      text = text.replaceAll('&gt;', '>');
-      text = text.replaceAll('&quot;', '"');
-      text = text.replaceAll('&#39;', "'");
-      text = text.replaceAll('&nbsp;', ' ');
-      
-      // Clean up whitespace
-      text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
-      
-      return text;
-    } catch (e) {
-      logPrint('EngineBridge: Error extracting text content: $e');
-      return 'Content extraction failed';
-    }
-  }
-
-  static Future<List<LayoutBox>> _extractLayoutBoxesSafely(Pointer<Void> boxArrayPtr, int count) async {
-    try {
-      final List<LayoutBox> layoutBoxes = [];
-      final maxBoxesToExtract = count.clamp(0, 50); // Limit to 50 boxes max
-      
-      logPrint('EngineBridge: Extracting up to $maxBoxesToExtract layout boxes safely');
-      
-      for (int i = 0; i < maxBoxesToExtract; i++) {
-        try {
-          // Add timeout protection for each layout box extraction
-          final boxPtr = await _getLayoutBoxWithTimeout(boxArrayPtr, i);
-          if (boxPtr == nullptr) {
-            logPrint('EngineBridge: No more layout boxes at index $i');
-            break;
-          }
-
-          // Extract the layout box with additional safety checks
-          final layoutBox = _extractLayoutBoxWithTimeout(boxPtr);
-          if (layoutBox != null) {
-            layoutBoxes.add(layoutBox);
-            logPrint('EngineBridge: Successfully extracted layout box $i');
-          }
-
-          _safeFreeLayoutBox(boxPtr);
-          
-          // Remove the small delay that could accumulate and cause memory issues
-          if (i % 5 == 0 && i > 0) {
-            logPrint('EngineBridge: Processed $i layout boxes, continuing...');
-          }
-          
-        } catch (e) {
-          logPrint('EngineBridge: Error extracting layout box $i: $e');
-          // Continue with next box instead of crashing
-          continue;
-        }
-      }
-      
-      logPrint('EngineBridge: Successfully extracted ${layoutBoxes.length} layout boxes');
-      return layoutBoxes;
-      
-    } catch (e) {
-      logPrint('EngineBridge: Error in safe layout box extraction: $e');
-      return [];
-    }
-  }
-
-  static Pointer<Uint8> _convertStringToNativeUtf8(String html) {
-    try {
-      final htmlBytes = Uint8List.fromList(utf8.encode(html));
-      final htmlPtr = calloc<Uint8>(htmlBytes.length + 1);
-      for (int i = 0; i < htmlBytes.length; i++) {
-        htmlPtr[i] = htmlBytes[i];
-      }
-      htmlPtr[htmlBytes.length] = 0; // Null terminator
-      return htmlPtr;
-    } catch (e) {
-      logPrint('Error converting string to UTF8: $e');
-      rethrow;
-    }
-  }
-
-  static Pointer<Void> _callParseHtml(Pointer<Uint8> htmlPtr) {
-    try {
-      logPrint('EngineBridge: Calling Rust parse_html function...');
-      final boxArrayPtr = _parseHtml(htmlPtr.cast<Char>());
-      logPrint('EngineBridge: Rust function returned: $boxArrayPtr');
-      return boxArrayPtr;
-    } catch (e) {
-      logPrint('Error calling Rust parse_html: $e');
-      return nullptr;
-    }
-  }
-
-  static Future<Pointer<FFILayoutBox>> _getLayoutBoxWithTimeout(
-    Pointer<Void> boxArrayPtr, 
-    int index
-  ) async {
-    try {
-      // Add a small timeout to prevent hanging
-      final completer = Completer<Pointer<FFILayoutBox>>();
-      Timer? timeoutTimer;
-      
-      timeoutTimer = Timer(const Duration(milliseconds: 100), () {
-        if (!completer.isCompleted) {
-          logPrint('EngineBridge: Timeout getting layout box $index');
-          completer.complete(nullptr);
-        }
-      });
-      
-      // Try to get the layout box
-      try {
-        final boxPtr = _getLayoutBox(boxArrayPtr, index);
-        if (!completer.isCompleted) {
-          timeoutTimer.cancel();
-          completer.complete(boxPtr);
-        }
-      } catch (e) {
-        if (!completer.isCompleted) {
-          timeoutTimer.cancel();
-          logPrint('EngineBridge: Error getting layout box $index: $e');
-          completer.complete(nullptr);
-        }
-      }
-      
-      return await completer.future.timeout(
-        const Duration(milliseconds: 200),
-        onTimeout: () {
-          timeoutTimer?.cancel();
-          logPrint('EngineBridge: Timeout getting layout box $index');
-          return nullptr;
-        },
-      );
-      
-    } catch (e) {
-      logPrint('EngineBridge: Error in _getLayoutBoxWithTimeout: $e');
-      return nullptr;
-    }
-  }
-
-  static LayoutBox? _extractLayoutBoxWithTimeout(Pointer<FFILayoutBox> boxPtr) {
-    try {
-      // Simple synchronous extraction with basic validation
-      if (!_isValidBoxPointer(boxPtr)) {
-        logPrint('EngineBridge: Invalid box pointer');
-        return null;
-      }
-      
-      final ffiBox = boxPtr.ref;
-      
-      // Validate numeric values before extraction
-      if (!_areNumericValuesValid(ffiBox)) {
-        logPrint('EngineBridge: Invalid numeric values in layout box');
-        return null;
-      }
-      
-      final numericValues = _extractNumericValues(ffiBox);
-      final stringValues = _extractStringValues(ffiBox);
-      final calculatedValues = _calculateAverages(ffiBox);
-      
-      final layoutBox = _createLayoutBox(numericValues, stringValues, calculatedValues);
-      return layoutBox;
-      
-    } catch (e) {
-      logPrint('EngineBridge: Error in _extractLayoutBoxWithTimeout: $e');
-      return null;
-    }
-  }
-
-  static bool _areNumericValuesValid(FFILayoutBox ffiBox) {
-    try {
-      // Check if all numeric values are finite
-      final numericFields = [
-        ffiBox.x, ffiBox.y, ffiBox.width, ffiBox.height,
-        ffiBox.font_size, ffiBox.font_weight,
-        ffiBox.margin_top, ffiBox.margin_right, ffiBox.margin_bottom, ffiBox.margin_left,
-        ffiBox.padding_top, ffiBox.padding_right, ffiBox.padding_bottom, ffiBox.padding_left,
-        ffiBox.border_width_top, ffiBox.border_width_right, ffiBox.border_width_bottom, ffiBox.border_width_left,
-      ];
-
-      for (final value in numericFields) {
-        if (!value.isFinite) {
-          logPrint('EngineBridge: Non-finite numeric value found: $value');
-          return false;
-        }
-      }
-
-      // Check for reasonable bounds
-      if (ffiBox.width < 0 || ffiBox.height < 0 || ffiBox.font_size < 0) {
-        logPrint('EngineBridge: Negative dimensions found: width=${ffiBox.width}, height=${ffiBox.height}, font_size=${ffiBox.font_size}');
-        return false;
-      }
-
-      return true;
-    } catch (e) {
-      logPrint('EngineBridge: Error validating numeric values: $e');
-      return false;
-    }
-  }
-
-  static void _safeFreeLayoutBox(Pointer<FFILayoutBox> boxPtr) {
-    try {
-      if (boxPtr != nullptr) {
-        _freeFFILayoutBox(boxPtr);
-      }
-    } catch (e) {
-      logPrint('EngineBridge: Error freeing layout box: $e');
-    }
-  }
-
-  static Map<String, double> _extractNumericValues(FFILayoutBox ffiBox) {
-    return {
-      'x': ffiBox.x.isFinite ? ffiBox.x : 0.0,
-      'y': ffiBox.y.isFinite ? ffiBox.y : 0.0,
-      'width': ffiBox.width.isFinite && ffiBox.width >= 0 ? ffiBox.width : 0.0,
-      'height': ffiBox.height.isFinite && ffiBox.height >= 0 ? ffiBox.height : 0.0,
-      'font_size': ffiBox.font_size.isFinite && ffiBox.font_size > 0 ? ffiBox.font_size : 12.0,
-      'font_weight': ffiBox.font_weight.isFinite && ffiBox.font_weight >= 0 ? ffiBox.font_weight : 400.0,
-    };
-  }
-
-  static Map<String, String> _extractStringValues(FFILayoutBox ffiBox) {
-    return {
-      'node_type': _safeCStringToString(ffiBox.node_type, 'unknown'),
-      'text_content': _safeCStringToString(ffiBox.text_content, ''),
-      'background_color': _safeCStringToString(ffiBox.background_color, ''),
-      'color': _safeCStringToString(ffiBox.color, ''),
-      'font_family': _safeCStringToString(ffiBox.font_family, ''),
-      'border_color': _safeCStringToString(ffiBox.border_color, ''),
-      'text_align': _safeCStringToString(ffiBox.text_align, 'left'),
-    };
-  }
-
-  static Map<String, double> _calculateAverages(FFILayoutBox ffiBox) {
-    return {
-      'margin': _calculateAverage([
-        ffiBox.margin_top, ffiBox.margin_right, ffiBox.margin_bottom, ffiBox.margin_left
-      ]),
-      'padding': _calculateAverage([
-        ffiBox.padding_top, ffiBox.padding_right, ffiBox.padding_bottom, ffiBox.padding_left
-      ]),
-      'border_width': _calculateAverage([
-        ffiBox.border_width_top, ffiBox.border_width_right, ffiBox.border_width_bottom, ffiBox.border_width_left
-      ]),
-    };
-  }
-
-  static LayoutBox _createLayoutBox(
-    Map<String, double> numericValues,
-    Map<String, String> stringValues,
-    Map<String, double> calculatedValues,
-  ) {
-    return LayoutBox(
-      x: numericValues['x'] ?? 0.0,
-      y: numericValues['y'] ?? 0.0,
-      width: numericValues['width'] ?? 0.0,
-      height: numericValues['height'] ?? 0.0,
-      nodeType: stringValues['node_type'] ?? '',
-      textContent: stringValues['text_content'] ?? '',
-      backgroundColor: stringValues['background_color'] ?? '',
-      color: stringValues['color'] ?? '',
-      fontSize: numericValues['font_size'] ?? 12.0,
-      fontFamily: stringValues['font_family'] ?? '',
-      borderWidth: numericValues['border_width'] ?? 0.0,
-      borderColor: stringValues['border_color'] ?? '',
-      padding: numericValues['padding'] ?? 0.0,
-      margin: numericValues['margin'] ?? 0.0,
-      fontWeight: numericValues['font_weight'] ?? 400.0,
-      textAlign: stringValues['text_align'] ?? '',
-      // Flexbox properties
-      flexDirection: stringValues['flexDirection'] ?? '',
-      flexWrap: stringValues['flexWrap'] ?? '',
-      justifyContent: stringValues['justifyContent'] ?? '',
-      alignItems: stringValues['alignItems'] ?? '',
-      flexGrow: numericValues['flexGrow'] ?? 0.0,
-      flexShrink: numericValues['flexShrink'] ?? 1.0,
-      flexBasis: stringValues['flexBasis'] ?? '',
-      order: numericValues['order']?.toInt() ?? 0,
-      // Grid properties
-      gridColumn: stringValues['gridColumn'] ?? '',
-      gridRow: stringValues['gridRow'] ?? '',
-      // Text rendering
-      lineHeight: numericValues['lineHeight'] ?? 1.2,
-      wordWrap: stringValues['wordWrap'] ?? '',
-      whiteSpace: stringValues['whiteSpace'] ?? '',
-      textOverflow: stringValues['textOverflow'] ?? '',
-      // Theme support
-      colorScheme: stringValues['colorScheme'] ?? '',
-    );
-  }
-
-  static String _safeCStringToString(Pointer<Char> ptr, String defaultValue) {
-    try {
-      if (!_isValidStringPointer(ptr)) return defaultValue;
-      
-      final bytes = _readBytesFromPointer(ptr);
-      if (bytes.isEmpty) return defaultValue;
-      
-      return _convertBytesToString(bytes);
-    } catch (e) {
-      logPrint('[DART] _safeCStringToString: Error: $e');
-      return defaultValue;
-    }
-  }
-
-  static bool _isValidStringPointer(Pointer<Char> ptr) {
-    try {
-      if (ptr == nullptr || ptr.address == 0) return false;
-      
-      if (ptr.address < _minPointerAddress || ptr.address > _maxPointerAddress) {
-        logPrint('[DART] _safeCStringToString: Invalid pointer address: 0x${ptr.address.toRadixString(16)}');
-        return false;
-      }
-      
-      if (ptr.address % 4 != 0) {
-        logPrint('[DART] _safeCStringToString: Unaligned pointer address: 0x${ptr.address.toRadixString(16)}');
-        return false;
-      }
-      
-      return true;
-    } catch (e) {
-      logPrint('[DART] _isValidStringPointer: Error: $e');
-      return false;
-    }
-  }
-
-  static List<int> _readBytesFromPointer(Pointer<Char> ptr) {
-    try {
-    final List<int> bytes = [];
-    int i = 0;
-      
-      while (i < _maxStringLength) {
-        try {
-          final byte = ptr[i];
-          if (byte == 0) break; // Null terminator
-          if (byte < 0 || byte > 255) {
-            logPrint('[DART] _safeCStringToString: Invalid byte value: $byte at position $i');
-            break;
-          }
-          bytes.add(byte);
-          i++;
-        } catch (e) {
-          logPrint('[DART] _safeCStringToString: Error reading byte at position $i: $e');
-          break;
-        }
-      }
-      
-      return bytes;
-    } catch (e) {
-      logPrint('[DART] _readBytesFromPointer: Error: $e');
-      return [];
-    }
-  }
-
-  static String _convertBytesToString(List<int> bytes) {
-    try {
-      final result = String.fromCharCodes(bytes);
-      if (result.length > _maxFinalStringLength) {
-        logPrint('[DART] _safeCStringToString: String too long (${result.length} chars), truncating');
-        return result.substring(0, _maxFinalStringLength);
-      }
-      return result;
-    } catch (e) {
-      logPrint('[DART] _safeCStringToString: Error converting bytes to string: $e');
-      return '';
-    }
-  }
-
-  static double _calculateAverage(List<double> values) {
-    try {
-      final validValues = values.where((v) => v.isFinite && v >= 0).toList();
-      if (validValues.isEmpty) return 0.0;
-      return validValues.reduce((a, b) => a + b) / validValues.length;
-    } catch (e) {
-      logPrint('[DART] _calculateAverage: Error: $e');
-      return 0.0;
-    }
-  }
-
   static List<LayoutBox> parseHtmlWithCss(String html, String css) {
     logPrint('[DART] parseHtmlWithCss called');
     
@@ -974,16 +417,16 @@ class EngineBridge {
     final htmlPtr = html.toNativeUtf8();
     final cssPtr = css.toNativeUtf8();
       
-      final resultPtr = _parseHtmlWithCssWithTimeout(htmlPtr, cssPtr);
+      final resultPtr = _parseHtmlWithCssWithTimeout(htmlPtr.cast<ffi.Uint8>(), cssPtr.cast<ffi.Uint8>());
       if (resultPtr == nullptr) {
-        _cleanupPointers(htmlPtr, cssPtr);
+        _cleanupPointers(htmlPtr.cast<ffi.Uint8>(), cssPtr.cast<ffi.Uint8>());
         logPrint('[DART] parseHtmlWithCss: Parsing failed, returning fallback');
         return [];
       }
       
       final layoutBoxes = _extractLayoutBoxesWithTimeout(resultPtr);
       
-      _cleanupPointers(htmlPtr, cssPtr);
+      _cleanupPointers(htmlPtr.cast<ffi.Uint8>(), cssPtr.cast<ffi.Uint8>());
       
       if (layoutBoxes.isEmpty) {
         logPrint('[DART] parseHtmlWithCss: No layout boxes extracted, returning fallback');
@@ -1018,12 +461,12 @@ class EngineBridge {
     }
   }
 
-  static Pointer<Void> _parseHtmlWithCssWithTimeout(Pointer<Utf8> htmlPtr, Pointer<Utf8> cssPtr) {
+  static ffi.Pointer<ffi.Void> _parseHtmlWithCssWithTimeout(ffi.Pointer<ffi.Uint8> htmlPtr, ffi.Pointer<ffi.Uint8> cssPtr) {
     try {
       logPrint('[DART] Calling Rust FFI _parseHtmlWithCss...');
       
       // Check if this is a large page that might cause freezing
-      final htmlString = htmlPtr.toDartString();
+      final htmlString = htmlPtr.cast<Utf8>().toDartString();
       final isLargePage = htmlString.length > _largePageThreshold;
       
       if (isLargePage) {
@@ -1033,7 +476,7 @@ class EngineBridge {
       final stopwatch = Stopwatch()..start();
       
       // Use timeout protection for large pages
-      Pointer<Void> resultPtr;
+      ffi.Pointer<ffi.Void> resultPtr;
       if (isLargePage) {
         try {
           resultPtr = _parseHtmlWithCssWithStrictTimeout(htmlPtr, cssPtr);
@@ -1064,20 +507,20 @@ class EngineBridge {
     }
   }
 
-  static Pointer<Void> _parseHtmlWithCssWithStrictTimeout(Pointer<Utf8> htmlPtr, Pointer<Utf8> cssPtr) {
+  static ffi.Pointer<ffi.Void> _parseHtmlWithCssWithStrictTimeout(ffi.Pointer<ffi.Uint8> htmlPtr, ffi.Pointer<ffi.Uint8> cssPtr) {
     try {
       logPrint('[DART] Using strict timeout protection for large page parsing');
       
       // For large pages, we'll use a more conservative approach
       // Instead of complex async timeouts, we'll limit the processing
-      final htmlString = htmlPtr.toDartString();
+      final htmlString = htmlPtr.cast<Utf8>().toDartString();
       
       // If the page is extremely large, truncate it to prevent freezing
       if (htmlString.length > _maxHtmlSize) {
         logPrint('[DART] Page too large (${htmlString.length} chars), truncating to $_maxHtmlSize chars');
         final truncatedHtml = htmlString.substring(0, _maxHtmlSize);
         final truncatedPtr = truncatedHtml.toNativeUtf8();
-        final result = _parseHtmlWithCss(truncatedPtr.cast<ffi.Char>(), cssPtr.cast<ffi.Char>());
+        final result = _parseHtmlWithCss(htmlPtr.cast<ffi.Char>(), cssPtr.cast<ffi.Char>());
         calloc.free(truncatedPtr);
         return result;
       }
@@ -1092,7 +535,7 @@ class EngineBridge {
     }
   }
 
-  static void _cleanupPointers(Pointer<Utf8> htmlPtr, Pointer<Utf8> cssPtr) {
+  static void _cleanupPointers(ffi.Pointer<ffi.Uint8> htmlPtr, ffi.Pointer<ffi.Uint8> cssPtr) {
     try {
     calloc.free(htmlPtr);
     calloc.free(cssPtr);
@@ -1101,7 +544,7 @@ class EngineBridge {
     }
   }
 
-  static List<LayoutBox> _extractLayoutBoxesWithTimeout(Pointer<Void> resultPtr) {
+  static List<LayoutBox> _extractLayoutBoxesWithTimeout(ffi.Pointer<ffi.Void> resultPtr) {
     try {
       final stopwatch = Stopwatch()..start();
       
@@ -1132,7 +575,7 @@ class EngineBridge {
     }
   }
 
-  static List<LayoutBox> _extractLayoutBoxes(Pointer<Void> resultPtr) {
+  static List<LayoutBox> _extractLayoutBoxes(ffi.Pointer<ffi.Void> resultPtr) {
     if (resultPtr == nullptr) {
       logPrint('[DART] _extractLayoutBoxes: resultPtr is null');
       return [];
@@ -1143,24 +586,24 @@ class EngineBridge {
       logPrint('[DART] _extractLayoutBoxes: count = $count');
       
       if (!_isValidBoxCountForExtraction(count)) {
-        _freeLayoutBoxArray(resultPtr);
+        _freeLayoutBoxArrayHelper(resultPtr);
         return [];
       }
       
       final layoutBoxes = _processLayoutBoxesInBatches(resultPtr, count);
       
-      _freeLayoutBoxArray(resultPtr);
+      _freeLayoutBoxArrayHelper(resultPtr);
       logPrint('[DART] _extractLayoutBoxes: Successfully extracted ${layoutBoxes.length} boxes');
       return layoutBoxes;
       
     } catch (e) {
       logPrint('[DART] _extractLayoutBoxes: Error: $e');
-      _safeFreeLayoutBoxArray(resultPtr);
+      _freeLayoutBoxArrayHelper(resultPtr);
       return [];
     }
   }
 
-  static List<LayoutBox> _processLayoutBoxesInBatches(Pointer<Void> resultPtr, int count) {
+  static List<LayoutBox> _processLayoutBoxesInBatches(ffi.Pointer<ffi.Void> resultPtr, int count) {
     try {
     final List<LayoutBox> layoutBoxes = [];
       int processedCount = 0;
@@ -1208,7 +651,7 @@ class EngineBridge {
     }
   }
 
-  static bool _isValidBoxPointerForExtraction(Pointer<FFILayoutBox> boxPtr) {
+  static bool _isValidBoxPointerForExtraction(ffi.Pointer<FFILayoutBox> boxPtr) {
     try {
       if (boxPtr == nullptr) {
         logPrint('[DART] _extractLayoutBoxes: boxPtr is null');
@@ -1247,16 +690,16 @@ class EngineBridge {
     }
   }
 
-  static void _safeFreeLayoutBoxArray(Pointer<Void> resultPtr) {
+  static void _freeLayoutBoxArrayHelper(ffi.Pointer<ffi.Void> resultPtr) {
     try {
       _freeLayoutBoxArray(resultPtr);
-    } catch (freeError) {
-      logPrint('[DART] _extractLayoutBoxes: Error freeing resultPtr: $freeError');
+    } catch (e) {
+      logPrint('[DART] _extractLayoutBoxes: Error freeing resultPtr: $e');
     }
   }
 
   static Future<List<LayoutBox>> extractLayoutBoxesAsync(
-    Pointer<Void> boxArrayPtr,
+    ffi.Pointer<ffi.Void> boxArrayPtr,
     Function(double) progressCallback,
   ) async {
     try {
@@ -1273,7 +716,7 @@ class EngineBridge {
     }
   }
 
-  static List<LayoutBox> _createDemoLayoutFromHtml(String html) {
+  static List<LayoutBox> createLayoutFromHtml(String html) {
     logPrint('EngineBridge: Creating demo layout from HTML');
     
     // Create a simple layout that represents the parsed content
@@ -1363,11 +806,11 @@ class EngineBridge {
       
       final ffiBox = boxPtr.ref;
       
-      final numericValues = _extractNumericValues(ffiBox);
-      final stringValues = _extractStringValues(ffiBox);
-      final calculatedValues = _calculateAverages(ffiBox);
+      final numericValues = extractNumericValues(ffiBox);
+      final stringValues = extractStringValues(ffiBox, safeCStringToString);
+      final calculatedValues = calculateAverages(ffiBox);
       
-      return _createLayoutBox(numericValues, stringValues, calculatedValues);
+      return createLayoutBox(numericValues, stringValues, calculatedValues);
       
     } catch (e) {
       logPrint('[DART] _extractLayoutBox: Error extracting layout box: $e');
@@ -1408,7 +851,7 @@ class EngineBridge {
       
       if (result.isEmpty) {
         logPrint('EngineBridge: No layout boxes extracted in background, using fallback');
-        return _createLayoutFromHtml(html);
+        return createLayoutFromHtml(html);
       }
       
       logPrint('EngineBridge: Successfully extracted ${result.length} layout boxes in background');
@@ -1416,7 +859,7 @@ class EngineBridge {
       
     } catch (e) {
       logPrint('EngineBridge: Error in background parsing: $e');
-      return _createLayoutFromHtml(html);
+      return createLayoutFromHtml(html);
     }
   }
 
@@ -1431,7 +874,7 @@ class EngineBridge {
       // Validate input
       if (html.isEmpty) {
         logPrint('EngineBridge: Isolate: Empty HTML input');
-        return _createLayoutFromHtml(html);
+        return createLayoutFromHtml(html);
       }
       
       // Add timeout protection for the entire parsing process
@@ -1439,13 +882,13 @@ class EngineBridge {
         _parseHtmlWithTimeout(html),
         Future.delayed(const Duration(seconds: 10), () {
           logPrint('EngineBridge: Isolate: HTML parsing timed out after 10 seconds, using fallback');
-          return _createLayoutFromHtml(html);
+          return createLayoutFromHtml(html);
         }),
       ]);
       
     } catch (e) {
       logPrint('EngineBridge: Isolate: Error: $e');
-      return _createLayoutFromHtml(html);
+      return createLayoutFromHtml(html);
     }
   }
 
@@ -1454,13 +897,13 @@ class EngineBridge {
       // Call Rust engine
       logPrint('EngineBridge: Isolate: Calling Rust parse_html function...');
       final htmlBytes = html.codeUnits;
-      final htmlPtr = calloc.allocate<Uint8>(htmlBytes.length + 1);
+      final htmlPtr = calloc.allocate<ffi.Uint8>(htmlBytes.length + 1);
       for (int i = 0; i < htmlBytes.length; i++) {
         htmlPtr[i] = htmlBytes[i];
       }
       htmlPtr[htmlBytes.length] = 0; // null terminator
       
-      final boxArrayPtr = _parseHtml(htmlPtr.cast<Char>());
+      final boxArrayPtr = callParseHtml(_parseHtml, htmlPtr);
       
       // Free the allocated memory
       calloc.free(htmlPtr);
@@ -1471,8 +914,8 @@ class EngineBridge {
       
       if (count <= 0) {
         logPrint('EngineBridge: Isolate: No layout boxes returned, using fallback');
-        _freeLayoutBoxArray(boxArrayPtr);
-        return _createLayoutFromHtml(html);
+        _freeLayoutBoxArrayHelper(boxArrayPtr);
+        return createLayoutFromHtml(html);
       }
       
       // Extract all boxes using batch method with timeout
@@ -1480,17 +923,17 @@ class EngineBridge {
         _extractLayoutBoxesBatch(boxArrayPtr, count),
         Future.delayed(const Duration(seconds: 5), () {
           logPrint('EngineBridge: Isolate: Layout box extraction timed out, using fallback');
-          _freeLayoutBoxArray(boxArrayPtr);
+          _freeLayoutBoxArrayHelper(boxArrayPtr);
           return <LayoutBox>[];
         }),
       ]);
       
       // Clean up
-      _freeLayoutBoxArray(boxArrayPtr);
+      _freeLayoutBoxArrayHelper(boxArrayPtr);
       
       if (layoutBoxes.isEmpty) {
         logPrint('EngineBridge: Isolate: No layout boxes extracted, using fallback');
-        return _createLayoutFromHtml(html);
+        return createLayoutFromHtml(html);
       }
       
       logPrint('EngineBridge: Isolate: Successfully extracted ${layoutBoxes.length} layout boxes');
@@ -1498,7 +941,7 @@ class EngineBridge {
       
     } catch (e) {
       logPrint('EngineBridge: Isolate: Error in _parseHtmlWithTimeout: $e');
-      return _createLayoutFromHtml(html);
+      return createLayoutFromHtml(html);
     }
   }
 
@@ -1508,11 +951,11 @@ class EngineBridge {
       logPrint('EngineBridge: Isolate: Initializing FFI functions...');
       
       if (Platform.isWindows) {
-        _lib = DynamicLibrary.open('rust_engine.dll');
+        _lib = ffi.DynamicLibrary.open('rust_engine.dll');
       } else if (Platform.isMacOS) {
-        _lib = DynamicLibrary.open('librust_engine.dylib');
+        _lib = ffi.DynamicLibrary.open('librust_engine.dylib');
       } else {
-        _lib = DynamicLibrary.open('librust_engine.so');
+        _lib = ffi.DynamicLibrary.open('librust_engine.so');
       }
       
       if (_lib == null) {
@@ -1525,6 +968,74 @@ class EngineBridge {
     } catch (e) {
       logPrint('EngineBridge: Isolate: Failed to initialize FFI: $e');
       rethrow;
+    }
+  }
+
+  /// Parse HTML and CSS to draw commands for direct painting
+  static DrawCommandResult parseHtmlToDrawCommands(String html, String css) {
+    if (!_initialized) {
+      logPrint('Engine not initialized');
+      return DrawCommandResult.failure('Engine not initialized');
+    }
+
+    try {
+      logPrint('EngineBridge: Starting HTML to draw commands parsing...');
+      
+      // Validate input
+      if (html.isEmpty) {
+        logPrint('EngineBridge: Empty HTML input');
+        return DrawCommandResult.failure('Empty HTML input');
+      }
+      
+      // Convert HTML to native UTF8
+      final htmlPtr = html.toNativeUtf8();
+      
+      try {
+        // Call Rust engine to parse HTML to draw commands
+        logPrint('EngineBridge: Calling Rust parse_html_to_draw_commands function...');
+        final drawCommandsPtr = _parseHtmlToDrawCommands(htmlPtr.cast<ffi.Uint8>().cast<ffi.Char>());
+        
+        if (drawCommandsPtr == nullptr) {
+          logPrint('EngineBridge: Rust engine returned null for draw commands');
+          return DrawCommandResult.failure('Failed to parse HTML to draw commands');
+        }
+        
+        // Convert draw commands to Dart objects
+        final drawCommands = extractDrawCommands(drawCommandsPtr);
+        
+        // Clean up
+        _freeDrawCommands(drawCommandsPtr);
+        
+        logPrint('EngineBridge: Successfully extracted ${drawCommands.length} draw commands');
+        return DrawCommandResult.success(drawCommands);
+        
+      } finally {
+        // Clean up HTML pointer
+        calloc.free(htmlPtr);
+      }
+      
+    } catch (e) {
+      logPrint('EngineBridge: Error parsing HTML to draw commands: $e');
+      return DrawCommandResult.failure('Error: $e');
+    }
+  }
+
+  /// Public API: Extracts a list of DrawCommand from a pointer to a draw command array
+  static List<DrawCommand> extractDrawCommands(ffi.Pointer<ffi.Void> drawCommandsPtr) {
+    if (drawCommandsPtr == nullptr) return [];
+    final count = _getDrawCommandCount(drawCommandsPtr);
+    final result = <DrawCommand>[];
+    for (var i = 0; i < count; i++) {
+      final cmdPtr = _getDrawCommand(drawCommandsPtr, i);
+      if (cmdPtr == nullptr) continue;
+      result.add(extractSingleDrawCommand(cmdPtr));
+    }
+    return result;
+  }
+
+  static void _freeDrawCommands(ffi.Pointer<ffi.Void> drawCommandsPtr) {
+    if (drawCommandsPtr != nullptr) {
+      _freeDrawCommandArray(drawCommandsPtr);
     }
   }
 
@@ -1550,7 +1061,7 @@ class EngineBridge {
       try {
         // Call Rust engine to fetch and parse URL
         logPrint('EngineBridge: Calling Rust parse_url_via_rust function...');
-        final boxArrayPtr = _parseUrlViaRust(urlPtr.cast<Char>());
+        final boxArrayPtr = _parseUrlViaRust(urlPtr as ffi.Pointer<ffi.Char>);
         
         if (boxArrayPtr == nullptr) {
           logPrint('EngineBridge: Rust engine returned null for URL parsing');
@@ -1563,7 +1074,7 @@ class EngineBridge {
         
         if (count <= 0) {
           logPrint('EngineBridge: No layout boxes returned for URL, using fallback');
-          _freeLayoutBoxArray(boxArrayPtr);
+          _freeLayoutBoxArrayHelper(boxArrayPtr);
           return [];
         }
         
@@ -1571,7 +1082,7 @@ class EngineBridge {
         final layoutBoxes = await _extractLayoutBoxesBatch(boxArrayPtr, count);
         
         // Clean up
-        _freeLayoutBoxArray(boxArrayPtr);
+        _freeLayoutBoxArrayHelper(boxArrayPtr);
         
         if (layoutBoxes.isEmpty) {
           logPrint('EngineBridge: No layout boxes extracted for URL, using fallback');
@@ -1591,6 +1102,309 @@ class EngineBridge {
       return [];
     }
   }
+
+  /// Helper to convert List<String> to Pointer<Pointer<Utf8>> for FFI
+  static ffi.Pointer<ffi.Pointer<ffi.Uint8>> _toPointerPointerUtf8(List<String> strings) {
+    final ptr = calloc<ffi.Pointer<ffi.Uint8>>(strings.length);
+    for (var i = 0; i < strings.length; i++) {
+      ptr[i] = strings[i].toNativeUtf8().cast<ffi.Uint8>();
+    }
+    return ptr;
+  }
+
+  /// Helper to free Pointer<Pointer<Utf8>>
+  static void _freePointerPointerUtf8(ffi.Pointer<ffi.Pointer<ffi.Uint8>> ptr, int length) {
+    for (var i = 0; i < length; i++) {
+      calloc.free(ptr[i]);
+    }
+    calloc.free(ptr);
+  }
+
+  /// Execute JavaScript code
+  static Future<bool> executeJavaScript(String script, String scriptName) async {
+    if (!_initialized) {
+      logPrint('Engine not initialized');
+      return false;
+    }
+
+    try {
+      logPrint('EngineBridge: Executing JavaScript: $scriptName');
+      
+      // Convert script and name to native UTF8
+      final scriptPtr = convertStringToNativeUtf8(script);
+      final namePtr = convertStringToNativeUtf8(scriptName);
+      
+      try {
+        // Call Rust engine to execute JavaScript
+        final result = _executeJavaScript(scriptPtr.cast<ffi.Char>(), namePtr.cast<ffi.Char>());
+        
+        if (result == 0) {
+          logPrint('EngineBridge: JavaScript executed successfully: $scriptName');
+          return true;
+        } else {
+          logPrint('EngineBridge: JavaScript execution failed: $scriptName');
+          return false;
+        }
+      } finally {
+        // Clean up pointers
+        calloc.free(scriptPtr);
+        calloc.free(namePtr);
+      }
+    } catch (e) {
+      logPrint('EngineBridge: Error executing JavaScript: $e');
+      return false;
+    }
+  }
+
+  /// Parse HTML with JavaScript execution
+  static Future<List<LayoutBox>> parseHtmlWithJavaScript(String html) async {
+    if (!_initialized) {
+      logPrint('Engine not initialized');
+      return [];
+    }
+
+    try {
+      logPrint('EngineBridge: Starting HTML parsing with JavaScript...');
+      
+      // Validate input
+      if (html.isEmpty) {
+        logPrint('EngineBridge: Empty HTML input');
+        return [];
+      }
+      
+      // Convert HTML to native UTF8
+      final htmlPtr = convertStringToNativeUtf8(html);
+      if (htmlPtr == nullptr) {
+        logPrint('EngineBridge: Failed to convert HTML to UTF8');
+        return [];
+      }
+      
+      try {
+        // Call Rust engine to parse HTML with JavaScript
+        logPrint('EngineBridge: Calling Rust parse_html_with_javascript function...');
+        final boxArrayPtr = _parseHtmlWithJavaScript(htmlPtr.cast<ffi.Char>());
+        
+        if (boxArrayPtr == nullptr) {
+          logPrint('EngineBridge: Rust engine returned null for HTML with JavaScript parsing');
+          return [];
+        }
+        
+        // Get layout box count
+        final count = _getLayoutBoxCount(boxArrayPtr);
+        logPrint('EngineBridge: Rust engine returned $count layout boxes with JavaScript');
+        
+        if (count <= 0) {
+          logPrint('EngineBridge: No layout boxes returned with JavaScript, using fallback');
+          _freeLayoutBoxArrayHelper(boxArrayPtr);
+          return [];
+        }
+        
+        // Extract layout boxes in batches
+        final layoutBoxes = await _extractLayoutBoxesBatch(boxArrayPtr, count);
+        
+        // Clean up
+        _freeLayoutBoxArrayHelper(boxArrayPtr);
+        
+        if (layoutBoxes.isEmpty) {
+          logPrint('EngineBridge: No layout boxes extracted with JavaScript, using fallback');
+          return [];
+        }
+        
+        logPrint('EngineBridge: Successfully extracted ${layoutBoxes.length} layout boxes with JavaScript');
+        return layoutBoxes;
+        
+      } finally {
+        // Clean up HTML pointer
+        calloc.free(htmlPtr);
+      }
+      
+    } catch (e) {
+      logPrint('EngineBridge: Error parsing HTML with JavaScript: $e');
+      return createLayoutFromHtml(html);
+    }
+  }
+
+  // Attribute accessors
+  static String? getAttribute(int nodeId, String name) {
+    final namePtr = name.toNativeUtf8();
+    final resultPtr = _domGetAttribute(nodeId, namePtr.cast<ffi.Char>());
+    calloc.free(namePtr);
+    if (resultPtr == nullptr) return null;
+    final result = resultPtr.cast<Utf8>().toDartString();
+    _freeCString(resultPtr);
+    return result;
+  }
+
+  static void setAttribute(int nodeId, String name, String value) {
+    final namePtr = name.toNativeUtf8();
+    final valuePtr = value.toNativeUtf8();
+    _domSetAttribute(nodeId, namePtr.cast<ffi.Char>(), valuePtr.cast<ffi.Char>());
+    calloc.free(namePtr);
+    calloc.free(valuePtr);
+  }
+
+  static void removeAttribute(int nodeId, String name) {
+    final namePtr = name.toNativeUtf8();
+    _domRemoveAttribute(nodeId, namePtr.cast<ffi.Char>());
+    calloc.free(namePtr);
+  }
+
+  static bool hasAttribute(int nodeId, String name) {
+    final namePtr = name.toNativeUtf8();
+    final result = _domHasAttribute(nodeId, namePtr.cast<ffi.Char>()) != 0;
+    calloc.free(namePtr);
+    return result;
+  }
+
+  static void _freeCString(ffi.Pointer<ffi.Char> ptr) {
+    if (ptr != nullptr) {
+      _freeCStringPtr(ptr);
+    }
+  }
+
+  // classList accessors
+  static void classListAdd(int nodeId, String className) {
+    final classPtr = className.toNativeUtf8();
+    _domClassListAdd(nodeId, classPtr.cast<ffi.Char>());
+    calloc.free(classPtr);
+  }
+
+  static void classListRemove(int nodeId, String className) {
+    final classPtr = className.toNativeUtf8();
+    _domClassListRemove(nodeId, classPtr.cast<ffi.Char>());
+    calloc.free(classPtr);
+  }
+
+  static void classListToggle(int nodeId, String className) {
+    final classPtr = className.toNativeUtf8();
+    _domClassListToggle(nodeId, classPtr.cast<ffi.Char>());
+    calloc.free(classPtr);
+  }
+
+  static bool classListContains(int nodeId, String className) {
+    final classPtr = className.toNativeUtf8();
+    final result = _domClassListContains(nodeId, classPtr.cast<ffi.Char>()) != 0;
+    calloc.free(classPtr);
+    return result;
+  }
+
+  // Node/Element property accessors
+  static String? getTextContent(int nodeId) {
+    final ptr = _domGetTextContent(nodeId);
+    if (ptr == nullptr) return null;
+    final result = ptr.cast<Utf8>().toDartString();
+    _freeCString(ptr);
+    return result;
+  }
+  static void setTextContent(int nodeId, String value) {
+    final valuePtr = value.toNativeUtf8();
+    _domSetTextContent(nodeId, valuePtr.cast<ffi.Char>());
+    calloc.free(valuePtr);
+  }
+  static String? getInnerHtml(int nodeId) {
+    final ptr = _domGetInnerHtml(nodeId);
+    if (ptr == nullptr) return null;
+    final result = ptr.cast<Utf8>().toDartString();
+    _freeCString(ptr);
+    return result;
+  }
+  static void setInnerHtml(int nodeId, String value) {
+    final valuePtr = value.toNativeUtf8();
+    _domSetInnerHtml(nodeId, valuePtr.cast<ffi.Char>());
+    calloc.free(valuePtr);
+  }
+  static String? getOuterHtml(int nodeId) {
+    final ptr = _domGetOuterHtml(nodeId);
+    if (ptr == nullptr) return null;
+    final result = ptr.cast<Utf8>().toDartString();
+    _freeCString(ptr);
+    return result;
+  }
+  static void setOuterHtml(int nodeId, String value) {
+    final valuePtr = value.toNativeUtf8();
+    _domSetOuterHtml(nodeId, valuePtr.cast<ffi.Char>());
+    calloc.free(valuePtr);
+  }
+  static String? getId(int nodeId) {
+    final ptr = _domGetId(nodeId);
+    if (ptr == nullptr) return null;
+    final result = ptr.cast<Utf8>().toDartString();
+    _freeCString(ptr);
+    return result;
+  }
+  static void setId(int nodeId, String value) {
+    final valuePtr = value.toNativeUtf8();
+    _domSetId(nodeId, valuePtr.cast<ffi.Char>());
+    calloc.free(valuePtr);
+  }
+  static String? getTagName(int nodeId) {
+    final ptr = _domGetTagName(nodeId);
+    if (ptr == nullptr) return null;
+    final result = ptr.cast<Utf8>().toDartString();
+    _freeCString(ptr);
+    return result;
+  }
+  static int getNodeType(int nodeId) {
+    return _domGetNodeType(nodeId);
+  }
+
+  // Style API function pointers
+  // --- ADDED ---
+  static String? getStyle(int nodeId, String name) {
+    final namePtr = name.toNativeUtf8();
+    final resultPtr = _domGetStyle(nodeId, namePtr.cast<ffi.Char>());
+    calloc.free(namePtr);
+    if (resultPtr == nullptr) return null;
+    final result = resultPtr.cast<Utf8>().toDartString();
+    _freeCString(resultPtr);
+    return result;
+  }
+
+  static void setStyle(int nodeId, String name, String value) {
+    final namePtr = name.toNativeUtf8();
+    final valuePtr = value.toNativeUtf8();
+    _domSetStyle(nodeId, namePtr.cast<ffi.Char>(), valuePtr.cast<ffi.Char>());
+    calloc.free(namePtr);
+    calloc.free(valuePtr);
+  }
+
+  static String? getStyleCssText(int nodeId) {
+    final resultPtr = _domGetStyleCssText(nodeId);
+    if (resultPtr == nullptr) return null;
+    final result = resultPtr.cast<Utf8>().toDartString();
+    _freeCString(resultPtr);
+    return result;
+  }
+
+  static void setStyleCssText(int nodeId, String value) {
+    final valuePtr = value.toNativeUtf8();
+    _domSetStyleCssText(nodeId, valuePtr.cast<ffi.Char>());
+    calloc.free(valuePtr);
+  }
+
+  // Event Handling API
+  // --- ADDED ---
+  static void addEventListener(int nodeId, String type, int callbackId) {
+    final typePtr = type.toNativeUtf8();
+    _domAddEventListener(nodeId, typePtr.cast<ffi.Char>(), callbackId);
+    calloc.free(typePtr);
+  }
+  static void removeEventListener(int nodeId, String type, int callbackId) {
+    final typePtr = type.toNativeUtf8();
+    _domRemoveEventListener(nodeId, typePtr.cast<ffi.Char>(), callbackId);
+    calloc.free(typePtr);
+  }
+  static void dispatchEvent(int nodeId, String type) {
+    final typePtr = type.toNativeUtf8();
+    _domDispatchEvent(nodeId, typePtr.cast<ffi.Char>());
+    calloc.free(typePtr);
+  }
+
+  // Public API for refactored top-level functions
+  static bool get isInitialized => _initialized;
+  static ffi.DynamicLibrary? get lib => _lib;
+  static Future<List<LayoutBox>> parseHtmlInternalWithChunking(String html) => _parseHtmlInternalWithChunking(html);
+  static Future<List<LayoutBox>> extractLayoutBoxesBatch(ffi.Pointer<ffi.Void> boxArrayPtr, int count) => _extractLayoutBoxesBatch(boxArrayPtr, count);
 }
 
 class BatchResult {
@@ -1598,4 +1412,74 @@ class BatchResult {
   final int processedCount;
   
   BatchResult(this.boxes, this.processedCount);
+}
+
+class DrawCommandResult {
+  final bool success;
+  final List<DrawCommand> drawCommands;
+  final String? errorMessage;
+
+  DrawCommandResult.success(this.drawCommands)
+      : success = true,
+        errorMessage = null;
+
+  DrawCommandResult.failure(this.errorMessage)
+      : success = false,
+        drawCommands = [];
+}
+
+/// Represents a draw command for the painting system
+class DrawCommand {
+  final double x;
+  final double y;
+  final double w;
+  final double h;
+  final int color;
+  final String content;
+  final String font;
+  final double size;
+  final String src;
+  final DrawCommandType type;
+
+  const DrawCommand.rect({
+    required this.x,
+    required this.y,
+    required this.w,
+    required this.h,
+    required this.color,
+  }) : content = '',
+       font = '',
+       size = 0,
+       src = '',
+       type = DrawCommandType.rect;
+
+  const DrawCommand.text({
+    required this.x,
+    required this.y,
+    required this.content,
+    required this.font,
+    required this.size,
+    required this.color,
+  }) : w = 0,
+       h = 0,
+       src = '',
+       type = DrawCommandType.text;
+
+  const DrawCommand.image({
+    required this.x,
+    required this.y,
+    required this.src,
+  }) : w = 0,
+       h = 0,
+       color = 0,
+       content = '',
+       font = '',
+       size = 0,
+       type = DrawCommandType.image;
+}
+
+enum DrawCommandType {
+  rect,
+  text,
+  image,
 } 

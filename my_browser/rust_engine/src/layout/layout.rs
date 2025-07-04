@@ -5,6 +5,7 @@ use crate::paint::display_list::{DrawCommand, DisplayList};
 use crate::paint::painter::Painter;
 use crate::compositor::compositor::Compositor;
 use crate::ffi::matches_selector;
+use crate::dom::node::DOMArena;
 
 #[derive(Debug, Clone)]
 pub struct LayoutStats {
@@ -65,32 +66,37 @@ impl LayoutEngine {
     }
 
     /// Find the <body> node in the DOM tree, or return the given node if not found
-    fn find_body_node<'a>(&self, node: &'a DOMNode) -> &'a DOMNode {
+    fn find_body_node_id(&self, node: &DOMNode, arena: &DOMArena) -> Option<String> {
         match &node.node_type {
             NodeType::Element(tag) if tag.eq_ignore_ascii_case("body") => {
-                println!("[LAYOUT] find_body_node: Found <body> node");
-                node
+                Some(node.id.clone())
             },
             _ => {
-                for child in &node.children {
-                    let found = self.find_body_node(child);
-                    if let NodeType::Element(tag) = &found.node_type {
-                        if tag.eq_ignore_ascii_case("body") {
-                            return found;
+                for child_id in &node.children {
+                    if let Some(child_node) = arena.get_node(child_id) {
+                        let child = child_node.lock().unwrap();
+                        if let Some(found_id) = self.find_body_node_id(&child, arena) {
+                            return Some(found_id);
                         }
                     }
                 }
-                // If no <body> found, return the original node
-                println!("[LAYOUT] find_body_node: No <body> found, using root node");
-                node
+                None
             }
         }
     }
 
     /// Basic block/inline layout algorithm
-    pub fn layout(&self, dom: &DOMNode) -> Vec<LayoutBox> {
+    pub fn layout(&self, dom: &DOMNode, arena: &DOMArena) -> Vec<LayoutBox> {
         println!("[LAYOUT] Starting basic block/inline layout");
-        let layout_root = self.find_body_node(dom);
+        let layout_root_id = self.find_body_node_id(dom, arena).unwrap_or_else(|| dom.id.clone());
+        let layout_root = match arena.get_node(&layout_root_id) {
+            Some(node) => node,
+            None => {
+                eprintln!("[LAYOUT] Error: Layout root not found for id {}. Returning empty layout.", layout_root_id);
+                return Vec::new();
+            }
+        };
+        let layout_root = layout_root.lock().unwrap();
         println!("[LAYOUT] Using {:?} as layout root", layout_root.node_type);
         
         let mut boxes = Vec::new();
@@ -99,13 +105,13 @@ impl LayoutEngine {
         let mut line_height = 0.0;
         let mut in_inline_context = false;
         
-        self.layout_node(layout_root, &mut boxes, &mut current_x, &mut current_y, &mut line_height, &mut in_inline_context, 0);
+        self.layout_node(&layout_root, arena, &mut boxes, &mut current_x, &mut current_y, &mut line_height, &mut in_inline_context, 0);
         
         println!("[LAYOUT] Basic layout completed: {} boxes created", boxes.len());
         boxes
     }
     
-    fn layout_node(&self, node: &DOMNode, boxes: &mut Vec<LayoutBox>, current_x: &mut f32, current_y: &mut f32, line_height: &mut f32, in_inline_context: &mut bool, depth: usize) {
+    fn layout_node(&self, node: &DOMNode, arena: &DOMArena, boxes: &mut Vec<LayoutBox>, current_x: &mut f32, current_y: &mut f32, line_height: &mut f32, in_inline_context: &mut bool, depth: usize) {
         let styles = self.get_node_styles(node);
         let display = styles.display.to_lowercase();
         
@@ -137,7 +143,7 @@ impl LayoutEngine {
                         width: width + padding.left + padding.right,
                         height: height + padding.top + padding.bottom,
                         node_type: tag_name.clone(),
-                        text_content: self.extract_text_content(node),
+                        text_content: self.extract_text_content(node, arena),
                         background_color: styles.background_color.clone(),
                         color: styles.color.clone(),
                         font_size: styles.font_size.parse().unwrap_or(16.0),
@@ -173,15 +179,18 @@ impl LayoutEngine {
                     *line_height = 0.0;
                     
                     // Layout children
-                    for child in &node.children {
-                        self.layout_node(child, boxes, current_x, current_y, line_height, in_inline_context, depth + 1);
+                    for child_id in &node.children {
+                        if let Some(child_node) = arena.get_node(child_id) {
+                            let child = child_node.lock().unwrap();
+                            self.layout_node(&child, arena, boxes, current_x, current_y, line_height, in_inline_context, depth + 1);
+                        }
                     }
                     
                 } else if is_inline {
                     // Inline element: continue on same line
                     *in_inline_context = true;
                     
-                    let text_content = self.extract_text_content(node);
+                    let text_content = self.extract_text_content(node, arena);
                     let font_size = styles.font_size.parse().unwrap_or(16.0);
                     let estimated_width = text_content.len() as f32 * font_size * 0.6; // Rough estimate
                     let estimated_height = font_size * 1.2;
@@ -238,14 +247,20 @@ impl LayoutEngine {
                     *line_height = (*line_height).max(estimated_height + padding.top + padding.bottom);
                     
                     // Layout children
-                    for child in &node.children {
-                        self.layout_node(child, boxes, current_x, current_y, line_height, in_inline_context, depth + 1);
+                    for child_id in &node.children {
+                        if let Some(child_node) = arena.get_node(child_id) {
+                            let child = child_node.lock().unwrap();
+                            self.layout_node(&child, arena, boxes, current_x, current_y, line_height, in_inline_context, depth + 1);
+                        }
                     }
                     
                 } else {
                     // Default to block behavior for unknown elements
-                    for child in &node.children {
-                        self.layout_node(child, boxes, current_x, current_y, line_height, in_inline_context, depth + 1);
+                    for child_id in &node.children {
+                        if let Some(child_node) = arena.get_node(child_id) {
+                            let child = child_node.lock().unwrap();
+                            self.layout_node(&child, arena, boxes, current_x, current_y, line_height, in_inline_context, depth + 1);
+                        }
                     }
                 }
             },
@@ -308,8 +323,11 @@ impl LayoutEngine {
             },
             _ => {
                 // Other node types: just process children
-                for child in &node.children {
-                    self.layout_node(child, boxes, current_x, current_y, line_height, in_inline_context, depth + 1);
+                for child_id in &node.children {
+                    if let Some(child_node) = arena.get_node(child_id) {
+                        let child = child_node.lock().unwrap();
+                        self.layout_node(&child, arena, boxes, current_x, current_y, line_height, in_inline_context, depth + 1);
+                    }
                 }
             }
         }
@@ -326,14 +344,17 @@ impl LayoutEngine {
         (width.min(max_width), height.min(max_height))
     }
 
-    fn print_dom_tree(&self, node: &DOMNode, depth: usize) {
+    fn print_dom_tree(&self, node: &DOMNode, depth: usize, arena: &DOMArena) {
         let indent = "  ".repeat(depth);
         match &node.node_type {
             NodeType::Element(tag_name) => {
                 println!("{}<{}> ({} children)", indent, tag_name, node.children.len());
                 if depth < 3 { // Limit depth for large trees
-                for child in &node.children {
-                    self.print_dom_tree(child, depth + 1);
+                    for child_id in &node.children {
+                        if let Some(child_node) = arena.get_node(child_id) {
+                            let child = child_node.lock().unwrap();
+                            self.print_dom_tree(&child, depth + 1, arena);
+                        }
                     }
                 } else if !node.children.is_empty() {
                     println!("{}... ({} more children)", indent, node.children.len());
@@ -350,8 +371,11 @@ impl LayoutEngine {
             NodeType::Document => {
                 println!("{}Document ({} children)", indent, node.children.len());
                 if depth < 3 {
-                for child in &node.children {
-                    self.print_dom_tree(child, depth + 1);
+                    for child_id in &node.children {
+                        if let Some(child_node) = arena.get_node(child_id) {
+                            let child = child_node.lock().unwrap();
+                            self.print_dom_tree(&child, depth + 1, arena);
+                        }
                     }
                 }
             }
@@ -402,7 +426,7 @@ impl LayoutEngine {
         }
     }
 
-    fn layout_node_advanced(&self, node: &DOMNode, x: f32, y: f32, boxes: &mut Vec<LayoutBox>, depth: usize, node_count: &mut usize) -> (Vec<LayoutBox>, (f32, f32)) {
+    fn layout_node_advanced(&self, node: &DOMNode, x: f32, y: f32, boxes: &mut Vec<LayoutBox>, depth: usize, node_count: &mut usize, arena: &DOMArena) -> (Vec<LayoutBox>, (f32, f32)) {
         use std::collections::{HashSet, VecDeque};
         
         let mut queue = VecDeque::with_capacity(1000);
@@ -544,7 +568,7 @@ impl LayoutEngine {
                         width,
                         height,
                         node_type: tag_name.clone(),
-                        text_content: self.extract_text_content(current_node),
+                        text_content: self.extract_text_content(current_node, arena),
                         background_color: styles.background_color.clone(),
                         color: styles.color.clone(),
                         font_size: styles.font_size.parse().unwrap_or(16.0),
@@ -572,43 +596,37 @@ impl LayoutEngine {
                         color_scheme: styles.color_scheme.clone(),
                     };
                     
-                    if self.is_layout_important(tag_name) || !self.extract_text_content(current_node).is_empty() {
+                    if self.is_layout_important(tag_name) || !self.extract_text_content(current_node, arena).is_empty() {
                         local_boxes.push(box_layout);
                     }
                     
                     // Advanced child processing with parallel optimization
-                    if node_depth < 5 && !current_node.children.is_empty() {
-                        let child_results: Vec<Vec<LayoutBox>> = current_node.children.iter()
-                            .filter(|child| self.should_process_node(child, node_depth + 1))
-                            .map(|child| {
-                                if node_depth + 1 <= 3 {
-                                    match &child.node_type {
-                                        NodeType::Element(tag) => println!("[ENQUEUE] <{}> at depth {} (parallel child)", tag, node_depth + 1),
-                                        NodeType::Text => println!("[ENQUEUE] <text> at depth {} (parallel child)", node_depth + 1),
-                                        NodeType::Document => println!("[ENQUEUE] <document> at depth {} (parallel child)", node_depth + 1),
+                    let child_results: Vec<Vec<LayoutBox>> = current_node.children.iter()
+                        .filter_map(|child_id| {
+                            if let Some(child_node) = arena.get_node(child_id) {
+                                let child = child_node.lock().unwrap();
+                                if self.should_process_node(&child, node_depth + 1) {
+                                    if node_depth + 1 <= 3 {
+                                        match &child.node_type {
+                                            NodeType::Element(tag) => println!("[ENQUEUE] <{}> at depth {} (parallel child)", tag, node_depth + 1),
+                                            NodeType::Text => println!("[ENQUEUE] <text> at depth {} (parallel child)", node_depth + 1),
+                                            NodeType::Document => println!("[ENQUEUE] <document> at depth {} (parallel child)", node_depth + 1),
+                                        }
                                     }
+                                    let mut local_boxes = Vec::new();
+                                    let mut local_node_count = 0;
+                                    Some(self.layout_node_advanced(&child, local_current_x, local_current_y, &mut local_boxes, node_depth + 1, &mut local_node_count, arena).0)
+                                } else {
+                                    None
                                 }
-                                let mut local_boxes = Vec::new();
-                                let mut local_node_count = 0;
-                                self.layout_node_advanced(child, local_current_x, local_current_y, &mut local_boxes, node_depth + 1, &mut local_node_count).0
-                            }).collect();
-                        
-                        for mut child_boxes in child_results {
-                            local_boxes.append(&mut child_boxes);
-                        }
-                    } else if node_depth < 12 || self.is_layout_important(tag_name) {
-                        for child in &current_node.children {
-                            if self.should_process_node(child, node_depth + 1) {
-                                if node_depth + 1 <= 3 {
-                                    match &child.node_type {
-                                        NodeType::Element(tag) => println!("[ENQUEUE] <{}> at depth {}", tag, node_depth + 1),
-                                        NodeType::Text => println!("[ENQUEUE] <text> at depth {}", node_depth + 1),
-                                        NodeType::Document => println!("[ENQUEUE] <document> at depth {}", node_depth + 1),
-                                    }
-                                }
-                                queue.push_back((child, local_current_x, local_current_y, node_depth + 1));
+                            } else {
+                                None
                             }
-                        }
+                        })
+                        .collect();
+                    
+                    for mut child_boxes in child_results {
+                        local_boxes.append(&mut child_boxes);
                     }
                     
                     local_current_x += width + margin.left + margin.right + border_width.left + border_width.right + padding.left + padding.right;
@@ -660,19 +678,28 @@ impl LayoutEngine {
                 NodeType::Document => {
                     println!("[LAYOUT] [ADVANCED] Document node: processing {} children", current_node.children.len());
                     let child_results: Vec<Vec<LayoutBox>> = current_node.children.iter()
-                        .filter(|child| self.should_process_node(child, node_depth + 1))
-                        .map(|child| {
-                            if node_depth + 1 <= 3 {
-                                match &child.node_type {
-                                    NodeType::Element(tag) => println!("[ENQUEUE] <{}> at depth {} (parallel doc child)", tag, node_depth + 1),
-                                    NodeType::Text => println!("[ENQUEUE] <text> at depth {} (parallel doc child)", node_depth + 1),
-                                    NodeType::Document => println!("[ENQUEUE] <document> at depth {} (parallel doc child)", node_depth + 1),
+                        .filter_map(|child_id| {
+                            if let Some(child_node) = arena.get_node(child_id) {
+                                let child = child_node.lock().unwrap();
+                                if self.should_process_node(&child, node_depth + 1) {
+                                    if node_depth + 1 <= 3 {
+                                        match &child.node_type {
+                                            NodeType::Element(tag) => println!("[ENQUEUE] <{}> at depth {} (parallel doc child)", tag, node_depth + 1),
+                                            NodeType::Text => println!("[ENQUEUE] <text> at depth {} (parallel doc child)", node_depth + 1),
+                                            NodeType::Document => println!("[ENQUEUE] <document> at depth {} (parallel doc child)", node_depth + 1),
+                                        }
+                                    }
+                                    let mut local_boxes = Vec::new();
+                                    let mut local_node_count = 0;
+                                    Some(self.layout_node_advanced(&child, local_current_x, local_current_y, &mut local_boxes, node_depth + 1, &mut local_node_count, arena).0)
+                                } else {
+                                    None
                                 }
+                            } else {
+                                None
                             }
-                            let mut local_boxes = Vec::new();
-                            let mut local_node_count = 0;
-                            self.layout_node_advanced(child, local_current_x, local_current_y, &mut local_boxes, node_depth + 1, &mut local_node_count).0
-                        }).collect();
+                        })
+                        .collect();
                     
                     for mut child_boxes in child_results {
                         local_boxes.append(&mut child_boxes);
@@ -691,20 +718,23 @@ impl LayoutEngine {
         (local_boxes.clone(), (current_x, current_y + max_height))
     }
 
-    fn extract_text_content(&self, node: &DOMNode) -> String {
+    fn extract_text_content(&self, node: &DOMNode, arena: &DOMArena) -> String {
         let mut text = String::new();
         match &node.node_type {
             NodeType::Text => {
                 text.push_str(&node.text_content);
             }
             NodeType::Element(_) => {
-        for child in &node.children {
-                    match &child.node_type {
-                        NodeType::Text => {
-                            text.push_str(&child.text_content);
-                            text.push(' ');
+                for child in &node.children {
+                    if let Some(child_node) = arena.get_node(child) {
+                        let child = child_node.lock().unwrap();
+                        match &child.node_type {
+                            NodeType::Text => {
+                                text.push_str(&child.text_content);
+                                text.push(' ');
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
             }
