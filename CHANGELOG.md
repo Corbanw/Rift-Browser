@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Rift Browser will be documented in this file.
+All notable changes to Velox Browser will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial release of Rift Browser
+- Initial release of Velox Browser
 - Rust-powered HTML parsing with streaming support
 - Advanced CSS selector engine based on Servo's selectors crate
 - Real-time layout generation from DOM nodes
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-platform support (Windows, Linux, macOS)
 
 ### Changed
-- Renamed from "Custom Browser Engine" to "Rift Browser"
+- Renamed from "Custom Browser Engine" to "Velox Browser"
 - Improved HTML token extraction in streaming parser
 - Enhanced layout box generation and rendering
 - Better memory management and cleanup
@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mobile platform support
 - Performance optimizations
 
-#### Version 1.0.0 (Planned)
+#### Version 0.0.1 (Initial Release)
 - Full web standards compliance
 - Production-ready stability
 - Comprehensive testing suite

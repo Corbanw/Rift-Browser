@@ -1,6 +1,6 @@
-# Contributing to Rift Browser
+# Contributing to Velox Browser
 
-Thank you for your interest in contributing to Rift Browser! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to Velox Browser! This document provides guidelines and information for contributors.
 
 ## 🤝 How to Contribute
 
@@ -175,8 +175,8 @@ Brief description of the changes
 
 2. Create a release tag:
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   git tag v0.0.1
+git push origin v0.0.1
    ```
 
 3. Create a GitHub release with:
@@ -202,4 +202,4 @@ Brief description of the changes
 - **Performance**: Optimize rendering and parsing
 - **Platform Support**: Add support for more platforms
 
-Thank you for contributing to Rift Browser! 🌉 
+Thank you for contributing to Velox Browser! 🌉 

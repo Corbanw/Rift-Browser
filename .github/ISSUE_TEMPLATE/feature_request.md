@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for Rift Browser
+about: Suggest an idea for Velox Browser
 title: '[FEATURE] '
 labels: 'enhancement'
 assignees: ''

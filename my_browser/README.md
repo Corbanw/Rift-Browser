@@ -1,9 +1,9 @@
-# Rift Browser Engine
+# Velox Browser Engine
 
 ## 🏗️ Architecture (2024)
 
 ```
-my_browser/
+velox_browser/
 ├── flutter_ui/                # Flutter app (UI, FFI bridge)
 │   ├── lib/
 │   │   ├── main.dart          # App entrypoint

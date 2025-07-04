@@ -1,8 +1,8 @@
-# Rift Browser - Project Summary
+# Velox Browser - Project Summary
 
 ## 🎯 Project Overview
 
-**Rift Browser** is a high-performance web browser built with Flutter and Rust, featuring a custom HTML/CSS rendering engine. The project demonstrates advanced techniques in cross-language development, streaming HTML parsing, and real-time web rendering.
+**Velox Browser** is a high-performance web browser built with Flutter and Rust, featuring a custom HTML/CSS rendering engine. The project demonstrates advanced techniques in cross-language development, streaming HTML parsing, and real-time web rendering.
 
 ## 🏗️ Technical Architecture
 
@@ -108,7 +108,7 @@ cargo test
 ## 📁 Project Structure
 
 ```
-Rift Browser/
+Velox Browser/
 ├── README.md                 # Main project documentation
 ├── LICENSE                   # MIT License
 ├── CONTRIBUTING.md          # Contribution guidelines
@@ -143,7 +143,7 @@ Rift Browser/
 - Mobile platform support
 - Performance optimizations
 
-### Version 1.0.0 (Planned)
+### Version 0.0.1 (Initial Release)
 - Full web standards compliance
 - Production-ready stability
 - Comprehensive testing suite
@@ -181,10 +181,10 @@ Rift Browser/
 
 ## 🎉 Conclusion
 
-Rift Browser represents a significant achievement in cross-language development, demonstrating how Flutter and Rust can be combined to create high-performance applications. The project showcases advanced techniques in HTML parsing, CSS processing, and real-time rendering while maintaining clean, maintainable code.
+Velox Browser represents a significant achievement in cross-language development, demonstrating how Flutter and Rust can be combined to create high-performance applications. The project showcases advanced techniques in HTML parsing, CSS processing, and real-time rendering while maintaining clean, maintainable code.
 
 The modular architecture, comprehensive documentation, and robust error handling make this project an excellent foundation for future development and a valuable learning resource for developers interested in browser engine development.
 
 ---
 
-**Rift Browser** - Bridging the gap between modern web standards and high-performance rendering! 🌉 
+**Velox Browser** - Bridging the gap between modern web standards and high-performance rendering! 🌉 

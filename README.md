@@ -1,8 +1,10 @@
-## 🏗️ Architecture
+# Velox Browser Engine
+
+## 🏗️ Architecture (2024)
 
 ```
-Rift Browser/
-├── flutter_ui/          # Flutter frontend application
+velox_browser/
+├── flutter_ui/                # Flutter app (UI, FFI bridge)
 │   ├── lib/            # Dart source code
 │   ├── android/        # Android platform files
 │   ├── ios/           # iOS platform files
